@@ -1,0 +1,14 @@
+<?xml version="1.0" ?>
+<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+<defs>
+    <style>.cls-1{fill:#0593ff;}.cls-2{fill:#FFCA28;}.cls-3{fill:#0e6ae0;}.cls-4{fill:#FFA000;}</style>
+</defs>
+<title/>
+    <g data-name="Folder Lock" id="Folder_Lock">
+        <path class="cls-4" d="M14.83,8.45l-1.4-2.11A3,3,0,0,0,10.93,5H4A2,2,0,0,0,2,7V9a1,1,0,0,0,1,1H14a1,1,0,0,0,.88-.53A1,1,0,0,0,14.83,8.45Z"/>
+        <path class="cls-2" d="M22,8H2V22a2,2,0,0,0,2,2H23a1,1,0,0,0,1-1V10A2,2,0,0,0,22,8Z"/>
+        <path class="cls-3" d="M25,19H21a1,1,0,0,1-1-1V16a3,3,0,0,1,6,0v2A1,1,0,0,1,25,19Zm-3-2h2V16a1,1,0,0,0-2,0Z"/>
+        <rect class="cls-1" height="10" rx="2" ry="2" width="10" x="18" y="17"/>
+        <path class="cls-3" d="M23,24a2,2,0,1,1,2-2A2,2,0,0,1,23,24Zm0-2Z"/>
+    </g>
+</svg>
