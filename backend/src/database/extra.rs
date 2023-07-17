@@ -1,45 +1,64 @@
 use std::{collections::HashSet, sync::Arc};
 
-use tokio::{fs, sync::Mutex};
+use tokio::sync::Mutex;
 
 use crate::Pitou;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 
+const DATABSE_PATH: &'static str = "./public/data/database/database.db";
+
+#[derive(Clone, Copy)]
 pub(crate) enum WhichTable {
-    FAVORITES,
-    HIDDENS,
-    RECENTS,
+    Bookmarks,
+    Locked,
+    History,
+}
+
+impl WhichTable {
+    fn name(self) -> String {
+        match self {
+            WhichTable::Bookmarks => String::from("bookmarks"),
+            WhichTable::History => String::from("history"),
+            WhichTable::Locked => String::from("locked"),
+        }
+    }
+}
+
+impl std::fmt::Display for WhichTable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write! {f, "{}", self.name()}
+    }
 }
 
 macro_rules! map_table {
     ($tab:expr, $conn:expr) => {
         match $tab {
-            WhichTable::FAVORITES => favorites::table
-                .select(favorites::items)
+            WhichTable::Bookmarks => bookmarks::table
+                .select(bookmarks::items)
                 .load::<String>($conn),
-            WhichTable::HIDDENS => hiddens::table.select(hiddens::items).load::<String>($conn),
-            WhichTable::RECENTS => recents::table.select(recents::items).load::<String>($conn),
+            WhichTable::Locked => locked::table.select(locked::items).load::<String>($conn),
+            WhichTable::History => history::table.select(history::items).load::<String>($conn),
         }
     };
 }
 
 table! {
-    favorites {
+    bookmarks {
         id -> Integer,
         items -> Text,
     }
 }
 
 table! {
-    hiddens {
+    locked {
         id -> Integer,
         items -> Text,
     }
 }
 
 table! {
-    recents {
+    history {
         id -> Integer,
         items -> Text,
     }
@@ -61,22 +80,21 @@ impl Database {
     }
 }
 
-fn create_tables(conn: &mut SqliteConnection) -> Result<(), diesel::result::Error> {
-    diesel::sql_query("CREATE TABLE IF NOT EXISTS favorites (id INTEGER, items TEXT)")
-        .execute(conn)?;
-    diesel::sql_query("CREATE TABLE IF NOT EXISTS hiddens (id INTEGER, items TEXT)")
-        .execute(conn)?;
-    diesel::sql_query("CREATE TABLE IF NOT EXISTS recents (id INTEGER, items TEXT)")
-        .execute(conn)?;
-
+fn create_table(
+    table_name: WhichTable,
+    conn: &mut SqliteConnection,
+) -> Result<(), diesel::result::Error> {
+    let str_query = format!("CREATE TABLE IF NOT EXISTS {table_name} (id INTEGER, items TEXT)");
+    diesel::sql_query(str_query).execute(conn)?;
     Ok(())
 }
 
-pub async fn create_table_and_retry<O, F: FnOnce(&mut SqliteConnection) -> O>(
+pub(crate) async fn create_table_and_retry<O, F: FnOnce(&mut SqliteConnection) -> O>(
+    table: WhichTable,
     conn: &mut SqliteConnection,
     f: F,
 ) -> O {
-    create_tables(conn).unwrap();
+    create_table(table, conn).unwrap();
     f(conn)
 }
 
@@ -88,7 +106,7 @@ pub(crate) async fn get_from_database(
         Ok(v) => v,
         Err(e) => match e {
             diesel::result::Error::DatabaseError(_, _) => {
-                create_table_and_retry(conn, |conn| map_table!(table, conn)).await?
+                create_table_and_retry(table, conn, |conn| map_table!(table, conn)).await?
             }
             e => return Err(e),
         },
@@ -97,7 +115,6 @@ pub(crate) async fn get_from_database(
 }
 
 static mut ONCE: Option<Arc<Mutex<Database>>> = None;
-static CUR_DATABASE_URL: &str = "./temp/tempfile.db";
 
 #[tokio::test]
 async fn test_init() {
@@ -106,16 +123,18 @@ async fn test_init() {
 
 async fn get_or_init() -> Arc<Mutex<Database>> {
     unsafe {
-        fs::create_dir_all(std::path::PathBuf::from(CUR_DATABASE_URL).parent().unwrap())
+        /*
+        fs::create_dir_all(std::path::PathBuf::from(DATABSE_PATH).parent().unwrap())
             .await
             .unwrap();
-        let new_db = Arc::new(Mutex::new(Database::new(CUR_DATABASE_URL).unwrap()));
+        */
+        let new_db = Arc::new(Mutex::new(Database::new(DATABSE_PATH).unwrap()));
         ONCE.get_or_insert(new_db).clone()
     }
 }
 
 async fn get(table: WhichTable) -> Result<Vec<Pitou>, diesel::result::Error> {
-    // Retrieve the JSON strings from the favorites table in the database
+    // Retrieve the JSON strings from the bookmarks table in the database
     let conn = get_or_init().await;
     let mut conn_lock = conn.lock().await;
     let connection = conn_lock.get_connection();
@@ -132,10 +151,7 @@ async fn get(table: WhichTable) -> Result<Vec<Pitou>, diesel::result::Error> {
     Ok(res)
 }
 
-pub async fn mark_hidden(
-    file: &Pitou,
-    conn: &mut SqliteConnection,
-) -> Result<(), diesel::result::Error> {
+pub async fn lock(file: &Pitou, conn: &mut SqliteConnection) -> Result<(), diesel::result::Error> {
     let bytes = bincode::serialize(&file).unwrap();
     let json_str = serde_json::to_string(&bytes).unwrap();
 
@@ -144,7 +160,8 @@ pub async fn mark_hidden(
         Ok(false) => insert(&json_str, conn),
         Err(e) => match e {
             diesel::result::Error::DatabaseError(_, _) => {
-                create_table_and_retry(conn, |conn| insert(&json_str, conn)).await
+                create_table_and_retry(WhichTable::Locked, conn, |conn| insert(&json_str, conn))
+                    .await
             }
             e => Err(e),
         },
@@ -161,8 +178,8 @@ macro_rules! json {
 }
 
 fn find(json: &str, db: &mut SqliteConnection) -> Result<bool, diesel::result::Error> {
-    use crate::hiddens::dsl::*;
-    let results = hiddens
+    use crate::locked::dsl::*;
+    let results = locked
         .filter(items.eq(json))
         .select(diesel::dsl::count_star())
         .first::<i64>(db)?;
@@ -171,15 +188,15 @@ fn find(json: &str, db: &mut SqliteConnection) -> Result<bool, diesel::result::E
 }
 
 fn insert(json: &str, db: &mut SqliteConnection) -> Result<(), diesel::result::Error> {
-    use crate::hiddens::dsl::*;
-    diesel::insert_into(hiddens)
+    use crate::locked::dsl::*;
+    diesel::insert_into(locked)
         .values(items.eq(json))
         .execute(db)?;
 
     Ok(())
 }
 
-pub async fn is_hidden(file: &Pitou, db: &mut Database) -> Result<bool, diesel::result::Error> {
+pub async fn is_locked(file: &Pitou, db: &mut Database) -> Result<bool, diesel::result::Error> {
     let json_str = json!(file);
     find(&json_str, &mut db.connection)
 }
@@ -209,42 +226,42 @@ macro_rules! diesel_error {
     }};
 }
 
-use super::{Favorites, Recents};
+use super::{Bookmarks, History};
 
-impl Favorites {
-    pub async fn all() -> std::io::Result<Favorites> {
-        let favorites = get(WhichTable::FAVORITES)
+impl Bookmarks {
+    pub async fn all() -> std::io::Result<Bookmarks> {
+        let bookmarks = get(WhichTable::Bookmarks)
             .await
             .map_err(|e| diesel_error!(e))?;
-        let hiddens = get(WhichTable::HIDDENS)
+        let locked = get(WhichTable::Locked)
             .await
             .map_err(|e| diesel_error!(e))?
             .into_iter()
             .collect::<HashSet<Pitou>>();
-        let values = favorites
+        let values = bookmarks
             .into_iter()
-            .filter(|fav| hiddens.contains(fav))
+            .filter(|fav| locked.contains(fav))
             .collect();
 
-        Ok(Favorites { values })
+        Ok(Bookmarks { values })
     }
 }
 
-impl Recents {
-    pub async fn all() -> std::io::Result<Recents> {
-        let recents = get(WhichTable::RECENTS)
+impl History {
+    pub async fn all() -> std::io::Result<History> {
+        let history = get(WhichTable::History)
             .await
             .map_err(|e| diesel_error!(e))?;
-        let hiddens = get(WhichTable::HIDDENS)
+        let locked = get(WhichTable::Locked)
             .await
             .map_err(|e| diesel_error!(e))?
             .into_iter()
             .collect::<HashSet<Pitou>>();
-        let values = recents
+        let values = history
             .into_iter()
-            .filter(|fav| hiddens.contains(fav))
+            .filter(|fav| locked.contains(fav))
             .collect();
 
-        Ok(Recents { values })
+        Ok(History { values })
     }
 }

@@ -1,15 +1,15 @@
+use backend::Pitou;
 use yew::prelude::*;
 
-use crate::{
-    app::{PitouProps, Props},
-    brightness, color,
-};
+use crate::{app::PitouProps, brightness, color};
 
 #[function_component]
-pub(super) fn AncestorsTabs(props: &PitouProps) -> Html {
-    let foreground_color = props.theme().foreground1();
-    let background_color_2 = props.theme().background2();
-    let spare_color = props.theme().spare();
+pub(super) fn AncestorsTabs(prop: &PitouProps) -> Html {
+    let theme = prop.theme();
+
+    let foreground_color = theme.foreground1();
+    let background_color_2 = theme.background2();
+    let spare_color = theme.spare();
 
     let outer_style = format! {"
     border: 1px solid {spare_color};
@@ -36,10 +36,11 @@ pub(super) fn AncestorsTabs(props: &PitouProps) -> Html {
         overflow: hidden;
     "};
 
-    let entries = props
-        .pitou_file()
+    let entries = prop
+        .pitou()
+        .path()
         .ancestors()
-        .map(|p| html! { <Ancestor pitou = { Into::<Props>::into((p, props.theme())) } /> })
+        .map(|p| html! { <Ancestor pitou = { Pitou::from(p) } {theme} /> })
         .collect::<Html>();
 
     html! {
@@ -79,9 +80,12 @@ pub(super) fn Ancestor(prop: &PitouProps) -> Html {
         {}
     ", color!(*mouse_is_overed, prop.theme().spare()), brightness!(*mouse_is_overed, 300)};
 
+    let pitou = prop.pitou().clone();
+    let theme = prop.theme();
+
     html! {
         <div class = "tab-item" {style} {onmouseover} {onmouseout}>
-            <TabName pitou = { prop.pitou().clone() } />
+            <TabName {pitou} {theme} />
             <Side/>
         </div>
     }
@@ -123,6 +127,6 @@ pub(super) fn TabName(prop: &PitouProps) -> Html {
         flex-wrap: nowrap;
     "};
     html! {
-        <span {style}>{ std::path::PathBuf::from(prop.pitou().file_name()).display() }</span>
+        <span {style}>{ std::path::PathBuf::from(prop.pitou().name().unwrap_or_default()).display() }</span>
     }
 }

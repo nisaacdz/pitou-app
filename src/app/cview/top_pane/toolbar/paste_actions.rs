@@ -31,16 +31,18 @@ pub fn PasteButton(prop: &PitouProps) -> Html {
         height: 80%;
         width: 100%;
     "};
+
+    let theme = prop.theme();
     
     html! {
         <div {style} {onmouseover} {onmouseout}>
             <div class = "card" style = {icon_style}>
-                <PasteIcon theme = { *prop.theme() }/>
+                <PasteIcon {theme}/>
                 
             </div>
             {
                 if *mouse_over {
-                    html! { <HoverNameDisp name = { "paste" }  theme = { *prop.theme() } /> }
+                    html! { <HoverNameDisp name = { "paste" }  {theme} /> }
                 } else {
                     html! {}
                 }
@@ -79,16 +81,18 @@ pub fn CopyButton(prop: &PitouProps) -> Html {
         height: 80%;
         width: 100%;
     "};
+
+    let theme = prop.theme();
     
     html! {
         <div {style} {onmouseover} {onmouseout}>
             <div class = "card" style = {icon_style}>
-                <CopyIcon theme = { *prop.theme() }/>
+                <CopyIcon { theme }/>
                 
             </div>
             {
                 if *mouse_over {
-                    html! { <HoverNameDisp name = { "copy" }  theme = { *prop.theme() } /> }
+                    html! { <HoverNameDisp name = { "copy" }  { theme } /> }
                 } else {
                     html! {}
                 }
@@ -126,16 +130,18 @@ pub fn CutButton(prop: &PitouProps) -> Html {
         height: 80%;
         width: 100%;
     "};
+
+    let theme = prop.theme();
     
     html! {
         <div {style} {onmouseover} {onmouseout}>
             <div class = "card" style = {icon_style}>
-                <CutIcon theme = { *prop.theme() }/>
+                <CutIcon { theme }/>
                 
             </div>
             {
                 if *mouse_over {
-                    html! { <HoverNameDisp name = { "cut" }  theme = { *prop.theme() } /> }
+                    html! { <HoverNameDisp name = { "cut" }  { theme } /> }
                 } else {
                     html! {}
                 }

@@ -20,14 +20,15 @@ pub(super) fn ToolBar(prop: &PitouProps) -> Html {
     ");
 
     let pitou = prop.pitou();
+    let theme = prop.theme();
 
     html! {
         <div {style}>
-        <CopyButton pitou = { pitou.clone() } />
-        <CutButton pitou = { pitou.clone() } />
-        <PasteButton pitou = { pitou.clone() } />
-        <InfoButton pitou = { pitou.clone() } />
-        <SearchButton pitou = { pitou.clone() } />
+        <CopyButton pitou = { pitou.clone() } {theme} />
+        <CutButton pitou = { pitou.clone() } {theme} />
+        <PasteButton pitou = { pitou.clone() } {theme} />
+        <InfoButton pitou = { pitou.clone() } {theme} />
+        <SearchButton pitou = { pitou.clone() } {theme} />
         </div>
     }
 }

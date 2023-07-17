@@ -4,10 +4,6 @@ use std::{io, path::PathBuf};
 use sysinfo::{System, SystemExt};
 use tokio::fs;
 
-pub fn test() -> Vec<Pitou> {
-    todo!()
-}
-
 #[test]
 fn test_m_p() {
     let mut mp = System::new();
@@ -43,8 +39,14 @@ macro_rules! include {
         match $val {
             Some(val) => match val {
                 Filter::System => unimplemented!(),
-                Filter::DotHidden => |pitou: &Pitou| pitou.path().file_name().map(|f| !f.to_str().unwrap().starts_with(".")).unwrap_or(true),
-                Filter::Hidden => unimplemented!()
+                Filter::DotHidden => |pitou: &Pitou| {
+                    pitou
+                        .path()
+                        .file_name()
+                        .map(|f| !f.to_str().unwrap().starts_with("."))
+                        .unwrap_or(true)
+                },
+                Filter::Locked => unimplemented!(),
             },
             None => |_: &Pitou| true,
         }
@@ -55,14 +57,17 @@ macro_rules! sort {
     ($val:expr) => {
         match $val {
             Sort::Name(asc) => move |f1: &Pitou, f2: &Pitou| {
-                if asc { f1.name().cmp(&f2.name()) } else { f2.name().cmp(&f1.name()) }
+                if asc {
+                    f1.name().cmp(&f2.name())
+                } else {
+                    f2.name().cmp(&f1.name())
+                }
             },
             Sort::Modified(_) => unimplemented!(),
             Sort::Accessed(_) => unimplemented!(),
         }
     };
 }
-
 
 impl Pitou {
     pub async fn try_exists(&self) -> io::Result<bool> {
@@ -96,14 +101,22 @@ impl Pitou {
         Ok(metadata.size())
     }
 
-    pub async fn children_filtered_and_sorted(&self, filter: Filter, sort: Sort) -> io::Result<Vec<Pitou>> {
+    pub async fn children_filtered_and_sorted(
+        &self,
+        filter: Filter,
+        sort: Sort,
+    ) -> io::Result<Vec<Pitou>> {
         let mut res = self.children_filtered(filter).await?;
         res.sort_unstable_by(|a, b| sort!(sort)(a, b));
         Ok(res)
     }
 
     pub async fn children_filtered(&self, filter: Filter) -> io::Result<Vec<Pitou>> {
-        self.children().await.map(|c| c.into_iter().filter(|v| include!(Some(filter))(v)).collect())
+        self.children().await.map(|c| {
+            c.into_iter()
+                .filter(|v| include!(Some(filter))(v))
+                .collect()
+        })
     }
 
     pub async fn children(&self) -> io::Result<Vec<Pitou>> {
@@ -118,7 +131,7 @@ impl Pitou {
     pub async fn siblings(&self) -> io::Result<Vec<Pitou>> {
         let path = match self.path().parent() {
             Some(v) => v,
-            None => return Ok(Vec::new())
+            None => return Ok(Vec::new()),
         };
 
         let pitou: Pitou = PathBuf::from(path).into();
@@ -128,10 +141,9 @@ impl Pitou {
     pub async fn properties(&self) -> io::Result<Properties> {
         let path = self.path().clone();
         let metadata = self.metadata().await?;
-        let hidden = true;
-        let favorite = true;
-        let recent = true;
-        let frequent = true;
+        let locked = true;
+        let bookmark = true;
+        let history = true;
         let size = metadata.size();
         let is_dir = metadata.is_dir();
         let accessed = metadata.accessed();
@@ -139,11 +151,10 @@ impl Pitou {
 
         Ok(Properties {
             path,
-            hidden,
+            locked,
             size,
-            favorite,
-            recent,
-            frequent,
+            bookmark,
+            history,
             accessed,
             modified,
             is_dir,
@@ -152,12 +163,12 @@ impl Pitou {
 }
 
 pub async fn debug_with_real_dir() -> Pitou {
-    let pitou = PathBuf::from("D:\\Workspace");
+    let pitou = PathBuf::from("D:/Workspace/rust");
     pitou.into()
 }
 
-#[async_recursion::async_recursion(?Send)]
-async fn directory_size<P: AsRef<std::path::Path>>(path: P) -> std::io::Result<u64> {
+#[async_recursion::async_recursion]
+async fn directory_size<P: AsRef<std::path::Path> + Send>(path: P) -> std::io::Result<u64> {
     let mut total_size = 0;
 
     let mut entries = tokio::fs::read_dir(path).await?;

@@ -1,10 +1,15 @@
 use yew::prelude::*;
 
-use crate::app::{PitouProps, Props, SettingsIcon, BackIcon, HomeIcon, HistoryIcon, Theme, CloudStorageIcon, LockedIcon, BookmarksIcon};
+use crate::app::{
+    BackIcon, BookmarksIcon, CloudStorageIcon, HistoryIcon, HomeIcon, LockedIcon, PitouProps,
+    SettingsIcon, Theme,
+};
+use backend::Pitou;
 
 #[derive(PartialEq, Properties)]
 struct LeftPaneMembersProps {
-    pitou: Props,
+    pitou: Pitou,
+    theme: Theme,
     onclick: Callback<()>,
     onhover: Callback<()>,
 }
@@ -26,8 +31,7 @@ impl HoverNameProp {
 
 #[function_component]
 fn HoverNameDisp(prop: &HoverNameProp) -> Html {
-
-    let style = format!{"
+    let style = format! {"
         background-color: {};
         position: relative;
         z-index: 1;
@@ -49,6 +53,7 @@ fn HoverNameDisp(prop: &HoverNameProp) -> Html {
 #[function_component]
 pub fn LeftPane(prop: &PitouProps) -> Html {
     let pitou = prop.pitou();
+    let theme = prop.theme();
     html! {
         <div style = { format!{"
             position: absolute;
@@ -63,13 +68,14 @@ pub fn LeftPane(prop: &PitouProps) -> Html {
             left: 0%;
             margin-bottom: 1px;" ,
         prop.theme().background1() } }>
-            <BackButton pitou = { pitou.clone() }/>
-            <HomeButton pitou = { pitou.clone() }/>
-            <HistoryButton pitou = { pitou.clone() }/>
-            <BookmarksButton pitou = { pitou.clone() }/>
-            <LockedButton pitou = { pitou.clone() }/>
-            <CloudButton pitou = { pitou.clone() }/>
-            <SettingsButton pitou = { pitou.clone() }/>
+
+            <BackButton pitou = { pitou.clone() } {theme}/>
+            <HomeButton pitou = { pitou.clone() } {theme}/>
+            <HistoryButton pitou = { pitou.clone() } {theme}/>
+            <BookmarksButton pitou = { pitou.clone() } {theme}/>
+            <LockedButton pitou = { pitou.clone() } {theme}/>
+            <CloudButton pitou = { pitou.clone() } {theme}/>
+            <SettingsButton pitou = { pitou.clone() } {theme}/>
         </div>
     }
 }
@@ -80,12 +86,12 @@ pub fn BackButton(prop: &PitouProps) -> Html {
 
     let onmouseover = {
         let mouse_over = mouse_over.clone();
-        move |_| mouse_over.set(true) 
+        move |_| mouse_over.set(true)
     };
 
     let onmouseout = {
         let mouse_over = mouse_over.clone();
-        move |_|  mouse_over.set(false) 
+        move |_| mouse_over.set(false)
     };
 
     let style = format! {"
@@ -104,16 +110,16 @@ pub fn BackButton(prop: &PitouProps) -> Html {
         align-items: center;
         justify-content: center;
     "};
-    
+
     html! {
         <div {style} {onmouseover} {onmouseout}>
             <div class = "card" style = {icon_style}>
-                <BackIcon theme = { *prop.theme() }/>
-                
+                <BackIcon theme = { prop.theme() }/>
+
             </div>
             {
                 if *mouse_over {
-                    html! { <HoverNameDisp name = { "back" }  theme = { *prop.theme() } /> }
+                    html! { <HoverNameDisp name = { "back" }  theme = { prop.theme() } /> }
                 } else {
                     html! {}
                 }
@@ -122,19 +128,18 @@ pub fn BackButton(prop: &PitouProps) -> Html {
     }
 }
 
-
 #[function_component]
 pub fn HomeButton(prop: &PitouProps) -> Html {
     let mouse_over = use_state(|| false);
 
     let onmouseover = {
         let mouse_over = mouse_over.clone();
-        move |_| mouse_over.set(true) 
+        move |_| mouse_over.set(true)
     };
 
     let onmouseout = {
         let mouse_over = mouse_over.clone();
-        move |_|  mouse_over.set(false) 
+        move |_| mouse_over.set(false)
     };
 
     let style = format! {"
@@ -153,16 +158,16 @@ pub fn HomeButton(prop: &PitouProps) -> Html {
         align-items: center;
         justify-content: center;    
     "};
-    
+
     html! {
         <div {style} {onmouseover} {onmouseout}>
             <div class = "card" style = {icon_style}>
-                <HomeIcon theme = { *prop.theme() }/>
-                
+                <HomeIcon theme = { prop.theme() }/>
+
             </div>
             {
                 if *mouse_over {
-                    html! { <HoverNameDisp name = { "home" }  theme = { *prop.theme() } /> }
+                    html! { <HoverNameDisp name = { "home" }  theme = { prop.theme() } /> }
                 } else {
                     html! {}
                 }
@@ -177,12 +182,12 @@ pub fn SettingsButton(prop: &PitouProps) -> Html {
 
     let onmouseover = {
         let mouse_over = mouse_over.clone();
-        move |_| mouse_over.set(true) 
+        move |_| mouse_over.set(true)
     };
 
     let onmouseout = {
         let mouse_over = mouse_over.clone();
-        move |_|  mouse_over.set(false) 
+        move |_| mouse_over.set(false)
     };
 
     let style = format! {"
@@ -201,15 +206,15 @@ pub fn SettingsButton(prop: &PitouProps) -> Html {
         align-items: center;
         justify-content: center;    
     "};
-    
+
     html! {
         <div {style} {onmouseover} {onmouseout}>
             <div class = "card" style = {icon_style}>
-                <SettingsIcon theme = { *prop.theme() }/>
+                <SettingsIcon theme = { prop.theme() }/>
             </div>
             {
                 if *mouse_over {
-                    html! { <HoverNameDisp name = { "settings" }  theme = { *prop.theme() } /> }
+                    html! { <HoverNameDisp name = { "settings" }  theme = { prop.theme() } /> }
                 } else {
                     html! {}
                 }
@@ -217,7 +222,6 @@ pub fn SettingsButton(prop: &PitouProps) -> Html {
         </div>
     }
 }
-
 
 #[function_component]
 pub fn HistoryButton(prop: &PitouProps) -> Html {
@@ -225,12 +229,12 @@ pub fn HistoryButton(prop: &PitouProps) -> Html {
 
     let onmouseover = {
         let mouse_over = mouse_over.clone();
-        move |_| mouse_over.set(true) 
+        move |_| mouse_over.set(true)
     };
 
     let onmouseout = {
         let mouse_over = mouse_over.clone();
-        move |_|  mouse_over.set(false) 
+        move |_| mouse_over.set(false)
     };
 
     let style = format! {"
@@ -249,16 +253,16 @@ pub fn HistoryButton(prop: &PitouProps) -> Html {
         align-items: center;
         justify-content: center;    
     "};
-    
+
     html! {
         <div {style} {onmouseover} {onmouseout}>
             <div class = "card" style = {icon_style}>
-                <HistoryIcon theme = { *prop.theme() }/>
-                
+                <HistoryIcon theme = { prop.theme() }/>
+
             </div>
             {
                 if *mouse_over {
-                    html! { <HoverNameDisp name = { "history" }  theme = { *prop.theme() } /> }
+                    html! { <HoverNameDisp name = { "history" }  theme = { prop.theme() } /> }
                 } else {
                     html! {}
                 }
@@ -267,19 +271,18 @@ pub fn HistoryButton(prop: &PitouProps) -> Html {
     }
 }
 
-
 #[function_component]
 pub fn BookmarksButton(prop: &PitouProps) -> Html {
     let mouse_over = use_state(|| false);
 
     let onmouseover = {
         let mouse_over = mouse_over.clone();
-        move |_| mouse_over.set(true) 
+        move |_| mouse_over.set(true)
     };
 
     let onmouseout = {
         let mouse_over = mouse_over.clone();
-        move |_|  mouse_over.set(false) 
+        move |_| mouse_over.set(false)
     };
 
     let style = format! {"
@@ -298,16 +301,16 @@ pub fn BookmarksButton(prop: &PitouProps) -> Html {
         align-items: center;
         justify-content: center;    
     "};
-    
+
     html! {
         <div {style} {onmouseover} {onmouseout}>
             <div class = "card" style = {icon_style}>
                 <BookmarksIcon />
-                
+
             </div>
             {
                 if *mouse_over {
-                    html! { <HoverNameDisp name = { "bookmarks" }  theme = { *prop.theme() } /> }
+                    html! { <HoverNameDisp name = { "bookmarks" }  theme = { prop.theme() } /> }
                 } else {
                     html! {}
                 }
@@ -322,12 +325,12 @@ pub fn CloudButton(prop: &PitouProps) -> Html {
 
     let onmouseover = {
         let mouse_over = mouse_over.clone();
-        move |_| mouse_over.set(true) 
+        move |_| mouse_over.set(true)
     };
 
     let onmouseout = {
         let mouse_over = mouse_over.clone();
-        move |_|  mouse_over.set(false) 
+        move |_| mouse_over.set(false)
     };
 
     let style = format! {"
@@ -346,16 +349,16 @@ pub fn CloudButton(prop: &PitouProps) -> Html {
         align-items: center;
         justify-content: center;    
     "};
-    
+
     html! {
         <div {style} {onmouseover} {onmouseout}>
             <div class = "card" style = {icon_style}>
-                <CloudStorageIcon theme = { *prop.theme() }/>
-                
+                <CloudStorageIcon theme = { prop.theme() }/>
+
             </div>
             {
                 if *mouse_over {
-                    html! { <HoverNameDisp name = { "cloud" }  theme = { *prop.theme() } /> }
+                    html! { <HoverNameDisp name = { "cloud" }  theme = { prop.theme() } /> }
                 } else {
                     html! {}
                 }
@@ -364,21 +367,18 @@ pub fn CloudButton(prop: &PitouProps) -> Html {
     }
 }
 
-
-
-
 #[function_component]
 pub fn LockedButton(prop: &PitouProps) -> Html {
     let mouse_over = use_state(|| false);
 
     let onmouseover = {
         let mouse_over = mouse_over.clone();
-        move |_| mouse_over.set(true) 
+        move |_| mouse_over.set(true)
     };
 
     let onmouseout = {
         let mouse_over = mouse_over.clone();
-        move |_|  mouse_over.set(false) 
+        move |_| mouse_over.set(false)
     };
 
     let style = format! {"
@@ -397,16 +397,16 @@ pub fn LockedButton(prop: &PitouProps) -> Html {
         align-items: center;
         justify-content: center;    
     "};
-    
+
     html! {
         <div {style} {onmouseover} {onmouseout}>
             <div class = "card" style = {icon_style}>
-                <LockedIcon theme = { *prop.theme() } />
-                
+                <LockedIcon theme = { prop.theme() } />
+
             </div>
             {
                 if *mouse_over {
-                    html! { <HoverNameDisp name = { "locked" }  theme = { *prop.theme() } /> }
+                    html! { <HoverNameDisp name = { "locked" }  theme = { prop.theme() } /> }
                 } else {
                     html! {}
                 }

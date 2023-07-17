@@ -1,7 +1,11 @@
+use backend::Pitou;
+use serde_wasm_bindgen::{from_value, to_value};
+use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
+use gloo::console::log;
 
 use crate::{
-    app::{DirIcon, PitouProps, RefreshIcon},
+    app::{invoke, DirIcon, PitouArg, PitouProps, RefreshIcon},
     background_color,
 };
 
@@ -18,11 +22,26 @@ impl RowState {
 
 #[function_component]
 pub fn SidePane(prop: &PitouProps) -> Html {
-    let entries = prop
-        .entries()
-        .into_iter()
-        .map(|pitou| html! { <Row {pitou}/> })
-        .collect::<Html>();
+    let theme = prop.theme();
+    let siblings = use_state(|| None);
+
+    {
+        let siblings = siblings.clone();
+        let arg = to_value(&PitouArg {
+            pitou: prop.pitou().clone(),
+        })
+        .unwrap();
+        
+        use_effect_with_deps(|_| {
+            spawn_local(async move {
+                log!("spawning from side_pane");
+                let val = invoke("siblings", arg).await;
+                let res =
+                    from_value::<Vec<Pitou>>(val).expect("couldn't convert output to a vec of pitou's");
+                siblings.set(Some(res))
+            })
+        },());
+    }
 
     let background_color = prop.theme().background2();
     let border_color = prop.theme().spare();
@@ -44,12 +63,23 @@ pub fn SidePane(prop: &PitouProps) -> Html {
         width: 20%;
     "};
 
-    let pitou = prop.pitou();
+    let pitou = prop.pitou().clone();
+
+    let entries = if let Some(pitou) = &*siblings {
+        pitou
+            .iter()
+            .map(|pitou| html! { <Row  pitou = { pitou.clone() } {theme} /> })
+            .collect::<Html>()
+    } else {
+        html! {}
+    };
 
     html! {
         <div {style}>
-            <TopOfParentDir pitou = { pitou.clone() }/>
-            {entries}
+            <TopOfParentDir {pitou} {theme} />
+            {
+                entries
+            }
         </div>
     }
 }
@@ -71,16 +101,19 @@ fn ParentDirName(prop: &PitouProps) -> Html {
         background-color: {background_color};
     "};
 
-    let a = prop.pitou().path().parent().map(|p| p.file_name().unwrap_or_default());
+    let a = prop
+        .pitou()
+        .path()
+        .parent()
+        .map(|p| p.file_name().unwrap_or_default());
 
     let parent_name = std::path::PathBuf::from(a.unwrap_or_default());
-
 
     html! {
         <div {style}>
         { parent_name.display() }
         </div>
-        
+
     }
 }
 
@@ -102,10 +135,12 @@ fn TopOfParentDir(prop: &PitouProps) -> Html {
     "};
 
     let pitou = prop.pitou();
+    let theme = prop.theme();
+
     html! {
         <div {style}>
-            <ParentDirName pitou = { pitou.clone() }/>
-            <RefreshButton pitou = { pitou.clone() }/>
+            <ParentDirName pitou = { pitou.clone() } {theme} />
+            <RefreshButton pitou = { pitou.clone() } {theme} />
         </div>
     }
 }
@@ -125,7 +160,7 @@ fn RefreshButton(prop: &PitouProps) -> Html {
         background-color: {background_color};
         ", spare_color};
     html! {
-        <div class = "card" {style} {onclick}> <RefreshIcon theme = { *prop.theme() } /> </div>
+        <div class = "card" {style} {onclick}> <RefreshIcon theme = { prop.theme() } /> </div>
     }
 }
 
@@ -161,11 +196,12 @@ pub fn Row(prop: &PitouProps) -> Html {
     prop.theme().foreground1(), background_color!(state.is_hovered(), prop.theme().background1()) };
 
     let pitou = prop.pitou();
+    let theme = prop.theme();
 
     html! {
         <div {style} {onmouseover} {onmouseout}>
-            <FileIcon pitou = { pitou.clone() } />
-            <FileName pitou = { pitou.clone() } />
+            <FileIcon pitou = { pitou.clone() } {theme} />
+            <FileName pitou = { pitou.clone() } {theme} />
         </div>
     }
 }
@@ -199,7 +235,7 @@ fn FileName(prop: &PitouProps) -> Html {
     "};
     html! {
         <p {style}>
-            { std::path::PathBuf::from(prop.pitou_file().name()).display() }
+            { std::path::PathBuf::from(prop.pitou().name().unwrap_or_default()).display() }
         </p>
     }
 }

@@ -3,12 +3,12 @@ use crate::Pitou;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
-pub struct Favorites {
+pub struct Bookmarks {
     pub values: Vec<Pitou>,
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct Recents {
+pub struct History {
     pub values: Vec<Pitou>,
 }
 

@@ -1,4 +1,4 @@
-use std::{ffi::OsString, path::PathBuf, /* ops::Deref,*/ time::SystemTime};
+use std::{path::PathBuf, time::SystemTime};
 
 use serde::{Deserialize /* Serializer, Deserializer*/, Serialize};
 
@@ -19,7 +19,7 @@ impl From<&sysinfo::Disk> for Drive {
         let total_space = drive.total_space();
         let free_space = drive.available_space();
         let kind = drive.kind().into();
-        let name = drive.name().to_owned();
+        let name = drive.name().to_owned().into();
 
         Drive {
             mount_point,
@@ -39,12 +39,12 @@ pub struct Drive {
     pub(crate) free_space: u64,
     pub(crate) is_removable: bool,
     pub(crate) kind: DriveKind,
-    pub(crate) name: OsString,
+    pub(crate) name: PathBuf,
 }
 
 impl Drive {
-    pub fn name(&self) -> &OsString {
-        &self.name
+    pub fn name(&self) -> &std::ffi::OsStr {
+        &self.name.as_os_str()
     }
 
     pub fn is_removable(&self) -> bool {
@@ -85,16 +85,10 @@ impl From<sysinfo::DiskKind> for DriveKind {
     }
 }
 
+#[allow(unused)]
 pub struct WithMetadata {
     pitou: Pitou,
     metadata: Metadata,
-}
-
-impl std::ops::Deref for WithMetadata {
-    type Target = Pitou;
-    fn deref(&self) -> &Self::Target {
-        &self.pitou
-    }
 }
 
 impl WithMetadata {
@@ -103,7 +97,7 @@ impl WithMetadata {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Hash)]
+#[derive(PartialEq, Eq, Clone, Hash, Serialize, Deserialize)]
 pub struct Pitou {
     pub(crate) path: PathBuf,
 }
@@ -118,9 +112,16 @@ impl Pitou {
     }
 }
 
-impl From<PathBuf> for Pitou {
-    fn from(path: PathBuf) -> Self {
+impl<P: AsRef<std::path::Path>> From<P> for Pitou {
+    fn from(path: P) -> Self {
+        let path = PathBuf::from(path.as_ref());
         Self { path }
+    }
+}
+
+impl Into<PathBuf> for Pitou {
+    fn into(self) -> PathBuf {
+        self.path
     }
 }
 
@@ -132,58 +133,14 @@ pub struct Properties {
     pub path: PathBuf,
     pub size: u64,
     pub is_dir: bool,
-    pub hidden: bool,
-    pub favorite: bool,
-    pub recent: bool,
-    pub frequent: bool,
+    pub locked: bool,
+    pub bookmark: bool,
+    pub history: bool,
     pub accessed: Option<SystemTime>,
     pub modified: Option<SystemTime>,
 }
 
-/*
-
-#[derive(Clone)]
-pub struct Path {
-    pub(crate) inner: std::rc::Rc<PathBuf>,
-}
-
-impl Deref for Path {
-    type Target = PathBuf;
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-
-impl AsRef<std::path::Path> for Path {
-    fn as_ref(&self) -> &std::path::Path {
-        &self.inner
-    }
-}
-
-impl PartialEq for Path {
-    fn eq(&self, other: &Self) -> bool {
-        &*self.inner == &*other.inner
-    }
-}
-
-
-impl Serialize for Path {
-    fn serialize<S: Serializer>(&self, sz: S) -> Result<S::Ok, S::Error> {
-        PathBuf::serialize(&self.inner, sz)
-    }
-}
-
-impl<'d> Deserialize<'d> for Path {
-    fn deserialize<D: Deserializer<'d>>(dz: D) -> Result<Self, D::Error> {
-        let path = PathBuf::deserialize(dz)?;
-        let inner = std::rc::Rc::new(path);
-        Ok(Self { inner })
-    }
-}
-
-
-*/
-
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Metadata {
     pub(crate) len: u64,
     pub(crate) size: u64,
@@ -218,7 +175,7 @@ impl Metadata {
 pub enum Filter {
     System,
     DotHidden,
-    Hidden,
+    Locked,
 }
 
 #[derive(Clone, Copy)]

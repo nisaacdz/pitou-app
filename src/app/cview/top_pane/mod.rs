@@ -9,9 +9,11 @@ use ancestors::*;
 use toolbar::*;
 
 #[function_component]
-pub fn TopPane(props: &PitouProps) -> Html {
-    let pitou = props.pitou();
-    let background_color = props.theme().background1();
+pub fn TopPane(prop: &PitouProps) -> Html {
+    let theme = prop.theme();
+    let pitou = prop.pitou();
+
+    let background_color = theme.background1();
     let style = format! {"
         background-color: {background_color};
         top: 0%;
@@ -21,12 +23,11 @@ pub fn TopPane(props: &PitouProps) -> Html {
         position: absolute;
         display: flex;
         flex-direction: column;
-        gap: 0;
-",  };
+        gap: 0;"};
     html! {
         <div {style}>
-            <ToolBar pitou = { pitou.clone() }/>
-            <AncestorsTabs pitou = { pitou.clone() }/>
+            <ToolBar pitou = { pitou.clone() } {theme}/>
+            <AncestorsTabs pitou = { pitou.clone() } {theme}/>
         </div>
     }
 }

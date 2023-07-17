@@ -20,7 +20,7 @@ pub fn DirIcon() -> Html {
 #[function_component]
 pub fn StackedDirIcon() -> Html {
     html! {
-        <img src="./public/folder_with_content_icon.svg" alt="Stacked Folder" />
+        <img src="./public/icons/folder_with_content_icon.svg" alt="Stacked Folder" />
     }
 }
 
@@ -109,7 +109,7 @@ pub fn InfoIcon(prop: &ThemeProp) -> Html {
 #[function_component]
 pub fn LockedIcon2() -> Html {
     html! {
-        <img src="./public/locked_icon_2.svg" alt="Locked Files" />
+        <img src="./public/icons/locked_icon_2.svg" alt="Locked Files" />
     }
 }
 
@@ -144,7 +144,7 @@ pub fn SearchIcon(prop: &ThemeProp) -> Html {
 #[function_component]
 pub fn LockedIcon(_prop: &ThemeProp) -> Html {
     html! {
-        <img src="./public/locked_icon.svg" alt="locked" />
+        <img src="./public/icons/locked_icon.svg" alt="locked" />
     }
 }
 
@@ -170,7 +170,7 @@ pub fn CloudStorageIcon(_prop: &ThemeProp) -> Html {
 #[function_component]
 pub fn PasteIcon(_prop: &ThemeProp) -> Html {
     html! {
-        <img src="./public/paste_icon.svg" alt="Paste Icon" />
+        <img src="./public/icons/paste_icon.svg" alt="Paste Icon" />
     }
 }
 
@@ -179,7 +179,7 @@ pub fn PasteIcon(_prop: &ThemeProp) -> Html {
 #[function_component]
 pub fn CutIcon(_prop: &ThemeProp) -> Html {
     html! {
-        <img src="./public/paste_icon.svg" alt="cut" />
+        <img src="./public/icons/paste_icon.svg" alt="cut" />
     }
 }
 
@@ -187,14 +187,14 @@ pub fn CutIcon(_prop: &ThemeProp) -> Html {
 pub fn CopyIcon(_prop: &ThemeProp) -> Html {
     //TODO
     html! {
-        <img src="./public/paste_icon.svg" alt="copy" />
+        <img src="./public/icons/paste_icon.svg" alt="copy" />
     }
 }
 
 #[function_component]
 pub fn BookmarksIcon() -> Html {
     html! {
-        <img src="./public/favorites_icon.svg" alt="bookmarks" />
+        <img src="./public/icons/favorites_icon.svg" alt="bookmarks" />
     }
 }
 
@@ -202,6 +202,6 @@ pub fn BookmarksIcon() -> Html {
 #[function_component]
 pub fn HistoryIcon(_prop: &ThemeProp) -> Html {
     html! {
-        <img src="./public/history_icon.svg" alt="history" />
+        <img src="./public/icons/history_icon.svg" alt="history" />
     }
 }

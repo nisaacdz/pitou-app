@@ -1,28 +1,29 @@
 use crate::{
-    app::{StackedDirIcon, PitouProps, Props, Theme},
+    app::{PitouProps, DirIcon, Theme},
     background_color,
 };
+use backend::Pitou;
 //use gloo::console::log;
 use yew::prelude::*;
 
 use super::CheckBox;
 
-
 #[derive(Properties, PartialEq)]
 pub struct RowProps {
-    pub(super) pitou: Props,
+    pub(super) pitou: Pitou,
+    pub(super) theme: Theme,
     pub(super) idx: usize,
     pub(super) selected: bool,
     pub(super) toggle_select: Callback<usize>,
 }
 
 impl RowProps {
-    fn pitou(&self) -> &Props {
+    fn pitou(&self) -> &Pitou {
         &self.pitou
     }
 
-    fn theme(&self) -> &Theme {
-        &self.pitou.theme()
+    fn theme(&self) -> Theme {
+        self.theme
     }
 }
 
@@ -59,23 +60,23 @@ pub fn Row(prop: &RowProps) -> Html {
         gap: 0;
         height: 10%;
         width: 100%;
+        font-size: 100%;
         {}
         text-align: left;", background_color!(prop.selected || *is_hovered, hover_background) };
 
     let pitou = prop.pitou();
+    let theme = prop.theme();
 
     html! {
         <div {style} {onmouseover} {onmouseout}>
             <CheckBox {on_toggle} is_checked = { prop.selected } />
-            <FileIcon pitou = { pitou.clone() } />
-            <FileName pitou = { pitou.clone() } />
-            <FileType pitou = { pitou.clone() } />
-            <LastModified pitou = { pitou.clone() }/>
+            <FileIcon pitou = { pitou.clone() } {theme} />
+            <FileName pitou = { pitou.clone() } {theme} />
+            <FileType pitou = { pitou.clone() } {theme} />
+            <LastModified pitou = { pitou.clone() } {theme}/>
         </div>
     }
 }
-
-
 
 #[function_component]
 fn FileIcon(_prop: &PitouProps) -> Html {
@@ -91,13 +92,14 @@ fn FileIcon(_prop: &PitouProps) -> Html {
 
     html! {
         <div {style}>
-        <StackedDirIcon/>
+        <DirIcon/>
         </div>
     }
 }
 
 #[function_component]
 fn FileName(prop: &PitouProps) -> Html {
+    let foreground = prop.theme().foreground1();
     let style = format! {"
     display: flex;
     flex-direction: row;
@@ -105,16 +107,19 @@ fn FileName(prop: &PitouProps) -> Html {
     left: 10%;
     width: 50%;
     height: 100%;
-    color: {};
+    color: {foreground};
     font-family: monospace;
     padding-left: 1%;
     font-size: 100%;
     align-items: center;
     overflow: hidden;
     white-space: nowrap;
-    text-overflow: ellipsis;", prop.theme().foreground1() };
+    text-overflow: ellipsis;"};
+
+    let name = prop.pitou().name().unwrap_or_default();
+    
     html! {
-        <div {style}>{ std::path::PathBuf::from(prop.pitou_file().name()).display() }</div>
+        <div {style}>{ std::path::PathBuf::from(name).display() }</div>
     }
 }
 

@@ -1,84 +1,64 @@
-use yew::prelude::*;
 use crate::app::PitouProps;
-
+use yew::prelude::*;
 
 #[function_component]
-pub fn RightClickMenu(prop: &PitouProps) -> Html {
-    let pitou = prop.pitou();
+pub fn RightClickMenu(_prop: &PitouProps) -> Html {
     html! {
         <div>
-            <Cut pitou = { pitou.clone() } />
-            <Copy pitou = { pitou.clone() } />
-            <Delete pitou = { pitou.clone() } />
-            <Rename pitou = { pitou.clone() } />
-            <Open pitou = { pitou.clone() } />
-            <Share pitou = { pitou.clone() } />
-            <Properties pitou = { pitou.clone() } />
-            <CreateShortcut pitou = { pitou.clone() } />
-            <OpenInSeparateWindow pitou = { pitou.clone() } />
+            <Cut />
+            <Copy />
+            <Delete />
+            <Rename />
+            <Open />
+            <Share />
+            <Properties />
+            <CreateShortcut />
+            <OpenInSeparateWindow />
         </div>
     }
 }
 
 #[function_component]
-fn Cut(_prop: &PitouProps) -> Html {
-    html! {
-
-    }
+fn Cut() -> Html {
+    html! {}
 }
 
 #[function_component]
-fn Copy(_prop: &PitouProps) -> Html {
-    html! {
-
-    }
+fn Copy() -> Html {
+    html! {}
 }
 
 #[function_component]
-pub fn Delete(_prop: &PitouProps) -> Html {
-    html! {
-
-    }
+pub fn Delete() -> Html {
+    html! {}
 }
 
 #[function_component]
-fn Rename(_prop: &PitouProps) -> Html {
-    html! {
-
-    }
+fn Rename() -> Html {
+    html! {}
 }
 
 #[function_component]
-fn Share(_prop: &PitouProps) -> Html {
-    html! {
-
-    }
+fn Share() -> Html {
+    html! {}
 }
 
 #[function_component]
-fn Properties(_prop: &PitouProps) -> Html {
-    html! {
-
-    }
+fn Properties() -> Html {
+    html! {}
 }
 
 #[function_component]
-fn Open(_prop: &PitouProps) -> Html {
-    html! {
-
-    }
+fn Open() -> Html {
+    html! {}
 }
 
 #[function_component]
-fn CreateShortcut(_prop: &PitouProps) -> Html {
-    html! {
-
-    }
+fn CreateShortcut() -> Html {
+    html! {}
 }
 
 #[function_component]
-fn OpenInSeparateWindow(_prop: &PitouProps) -> Html {
-    html! {
-
-    }
+fn OpenInSeparateWindow() -> Html {
+    html! {}
 }

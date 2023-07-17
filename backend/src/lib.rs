@@ -1,8 +1,8 @@
 mod fs;
 pub use fs::*;
 
-mod db;
-pub use db::*;
+mod database;
+pub use database::*;
 
 mod json;
 pub use json::*;

@@ -47,8 +47,7 @@ impl Theme {
 
 #[allow(unused)]
 pub struct Settings {
-    view: AppView,
-    theme: Theme,
+    view: AppView
 }
 
 impl Default for Settings {
@@ -61,7 +60,6 @@ impl Default for Settings {
 impl Settings {
     pub const DEFAULT: Settings = Settings {
         view: AppView::Content,
-        theme: Theme::DEFAULT,
     };
 
     pub fn settings_or_default() -> Self {
@@ -69,10 +67,6 @@ impl Settings {
     }
     pub fn view(&self) -> AppView {
         self.view
-    }
-
-    pub fn theme(&self) -> Theme {
-        self.theme
     }
 }
 

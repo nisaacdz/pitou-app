@@ -1,15 +1,14 @@
-use crate::app::{Theme, PitouProps};
 use super::Properties;
+use crate::app::{PitouProps, Theme};
 
 #[derive(PartialEq, Properties)]
 pub struct ThemeProp {
     pub theme: Theme,
 }
 
-
 impl<'a> From<&'a PitouProps> for ThemeProp {
     fn from(value: &'a PitouProps) -> ThemeProp {
-        let theme = *value.theme();
+        let theme = value.theme();
         ThemeProp { theme }
     }
 }
