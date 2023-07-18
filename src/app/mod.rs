@@ -15,8 +15,8 @@ extern "C" {
 }
 
 #[derive(Serialize)]
-pub(crate) struct PitouArg {
-    pub pitou: Pitou,
+pub(crate) struct PitouArg<'a> {
+    pub pitou: &'a Pitou,
 }
 
 #[derive(Serialize)]
@@ -41,31 +41,34 @@ pub fn App() -> Html {
     let settings = use_state(|| Settings::DEFAULT);
     let theme = use_state(|| Theme::DEFAULT);
 
-    let selected_directory = use_state(|| None);
+    let directory = use_state(|| None);
 
     {
-        let selected_directory = selected_directory.clone();
-        let theme = theme.clone();
-        let pitou = to_value(&PitouNoArg).unwrap();
+        let directory = directory.clone();
+        let arg = to_value(&PitouNoArg).unwrap();
         use_effect_with_deps(
             |_| {
                 spawn_local(async move {
                     log!("spawning from app");
-                    let js_val = invoke("get_debug_file", pitou).await;
+                    let js_val = invoke("get_debug_file", arg).await;
                     let res = from_value::<backend::Pitou>(js_val).unwrap();
-                    let theme = *theme;
-                    selected_directory.set(Some(PitouProps::new(res, theme)))
+                    directory.set(Some(res))
                 })
             },
             (),
         );
     }
 
+    let updatedirectory = {
+        let directory = directory.clone();
+        move |new_dir| directory.set(Some(new_dir))
+    };
+
     html! {
         match settings.view() {
             AppView::Content =>
-            if let Some(PitouProps { pitou, theme}) = &*selected_directory {
-                html! { <ContentView pitou = { pitou.clone() } theme = {*theme}/> }
+            if let Some(pitou) = &*directory {
+                html! { <ContentView pitou = { pitou.clone() } theme = {*theme} {updatedirectory} /> }
             } else {
                 html! { <h3>{ "Waiting" }</h3> }
             },

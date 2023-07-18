@@ -1,11 +1,11 @@
 use backend::Pitou;
+use gloo::console::log;
 use serde_wasm_bindgen::{from_value, to_value};
 use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
-use gloo::console::log;
 
 use crate::{
-    app::{invoke, DirIcon, PitouArg, PitouProps, RefreshIcon},
+    app::{invoke, DirIcon, PitouArg, PitouProps, RefreshIcon, Theme},
     background_color,
 };
 
@@ -20,31 +20,50 @@ impl RowState {
     }
 }
 
+#[derive(PartialEq, Properties)]
+pub struct SidePaneProps {
+    pub pitou: Pitou,
+    pub theme: Theme,
+    pub updatedirectory: Callback<Pitou>,
+}
+
+impl SidePaneProps {
+    fn pitou(&self) -> &Pitou {
+        &self.pitou
+    }
+}
+
 #[function_component]
-pub fn SidePane(prop: &PitouProps) -> Html {
-    let theme = prop.theme();
+pub fn SidePane(prop: &SidePaneProps) -> Html {
+    let theme = prop.theme;
+    let directory = use_state(|| prop.pitou().clone());
     let siblings = use_state(|| None);
 
     {
         let siblings = siblings.clone();
-        let arg = to_value(&PitouArg {
-            pitou: prop.pitou().clone(),
-        })
-        .unwrap();
-        
-        use_effect_with_deps(|_| {
-            spawn_local(async move {
-                log!("spawning from side_pane");
-                let val = invoke("siblings", arg).await;
-                let res =
-                    from_value::<Vec<Pitou>>(val).expect("couldn't convert output to a vec of pitou's");
-                siblings.set(Some(res))
-            })
-        },());
+
+        use_effect_with_deps(
+            |directory| {
+                let directory = directory.clone();
+                spawn_local(async move {
+                    let arg = to_value(&PitouArg { pitou: &*directory }).unwrap();
+                    log!("spawning from side_pane");
+                    let val = invoke("siblings", arg).await;
+                    let res = from_value::<Vec<Pitou>>(val)
+                        .expect("couldn't convert output to a vec of pitou's");
+                    siblings.set(Some(res))
+                })
+            },
+            directory.clone(),
+        );
     }
 
-    let background_color = prop.theme().background2();
-    let border_color = prop.theme().spare();
+    if prop.pitou() != &*directory {
+        directory.set(prop.pitou().clone());
+    }
+
+    let background_color = theme.background2();
+    let border_color = theme.spare();
 
     let style = format! {"
         position: absolute;
@@ -68,7 +87,7 @@ pub fn SidePane(prop: &PitouProps) -> Html {
     let entries = if let Some(pitou) = &*siblings {
         pitou
             .iter()
-            .map(|pitou| html! { <Row  pitou = { pitou.clone() } {theme} /> })
+            .map(|pitou| html! { <SidePaneRow  pitou = { pitou.clone() } {theme} updatedirectory = { prop.updatedirectory.clone() }/> })
             .collect::<Html>()
     } else {
         html! {}
@@ -164,8 +183,15 @@ fn RefreshButton(prop: &PitouProps) -> Html {
     }
 }
 
+#[derive(PartialEq, Properties)]
+pub struct SidePaneRowProps {
+    pub pitou: Pitou,
+    pub theme: Theme,
+    pub updatedirectory: Callback<Pitou>,
+}
+
 #[function_component]
-pub fn Row(prop: &PitouProps) -> Html {
+pub fn SidePaneRow(prop: &SidePaneRowProps) -> Html {
     let state: UseStateHandle<RowState> = use_state(RowState::default);
 
     let onmouseover = {
@@ -182,26 +208,26 @@ pub fn Row(prop: &PitouProps) -> Html {
         }
     };
 
+    let theme = prop.theme;
+
+    let foreground_color = theme.foreground1();
+
     let style = format! {"
         display: flex;
         flex-direction: row;
         gap: 0;
-        color: {};
+        color: {foreground_color};
         font-family: monospace;
         height: 10%;
         width: 100%;
         font-size: 100%;
         {}
-        text-align: left;",
-    prop.theme().foreground1(), background_color!(state.is_hovered(), prop.theme().background1()) };
-
-    let pitou = prop.pitou();
-    let theme = prop.theme();
+        text-align: left;", background_color!(state.is_hovered(), theme.background1()) };
 
     html! {
         <div {style} {onmouseover} {onmouseout}>
-            <FileIcon pitou = { pitou.clone() } {theme} />
-            <FileName pitou = { pitou.clone() } {theme} />
+            <FileIcon pitou = { prop.pitou.clone() } {theme} />
+            <SidePaneFileName pitou = { prop.pitou.clone() } {theme} updatedirectory = { prop.updatedirectory.clone() } />
         </div>
     }
 }
@@ -222,8 +248,15 @@ fn FileIcon(_prop: &PitouProps) -> Html {
     }
 }
 
+#[derive(PartialEq, Properties)]
+pub struct SidePaneFileNameProps {
+    pitou: Pitou,
+    theme: Theme,
+    updatedirectory: Callback<Pitou>,
+}
+
 #[function_component]
-fn FileName(prop: &PitouProps) -> Html {
+fn SidePaneFileName(prop: &SidePaneFileNameProps) -> Html {
     let style = format! {"
         left: 15%;
         width: 80%;
@@ -233,9 +266,16 @@ fn FileName(prop: &PitouProps) -> Html {
         white-space: nowrap;
         text-overflow: ellipsis;
     "};
+
+    let onclick = {
+        let pitou = prop.pitou.clone();
+        let updatedirectory = prop.updatedirectory.clone();
+        move |_| updatedirectory.emit(pitou.clone())
+    };
+
     html! {
-        <p {style}>
-            { std::path::PathBuf::from(prop.pitou().name().unwrap_or_default()).display() }
+        <p {style} {onclick}>
+            { std::path::PathBuf::from(prop.pitou.name().unwrap_or_default()).display() }
         </p>
     }
 }

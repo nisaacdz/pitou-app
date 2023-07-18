@@ -42,9 +42,6 @@ body {
 }
 
 .absc {
-  color: inherit;
-  fill: #FFA000;
-  fill: #FFCA28;
-
-  fill: #0e6ae0;
+  color: #000;
+  display: flexbox;
 }

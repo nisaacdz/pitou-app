@@ -2,7 +2,7 @@ use yew::prelude::*;
 
 #[function_component]
 pub fn HomeView() -> Html {
-    let style = format!{"
+    let style = format! {"
     display: flex;
     gap: 1%;
     "};

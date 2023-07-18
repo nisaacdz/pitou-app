@@ -1,23 +1,20 @@
-
 //use gloo::console::log;
 use yew::prelude::*;
 
 use super::CheckBox;
 
-
 #[derive(Properties, PartialEq)]
 pub struct RowDescriptorProps {
-    pub(super) toggle_select_all: Callback<()>,
+    pub(super) toggleselectall: Callback<()>,
     pub(super) checked: bool,
 }
 
 #[function_component]
 pub fn RowDescriptor(prop: &RowDescriptorProps) -> Html {
-
-    let on_toggle = {
-        let toggle_select_all = prop.toggle_select_all.clone();
+    let ontoggle = {
+        let toggleselectall = prop.toggleselectall.clone();
         move |()| {
-            toggle_select_all.emit(());
+            toggleselectall.emit(());
         }
     };
 
@@ -31,10 +28,10 @@ pub fn RowDescriptor(prop: &RowDescriptorProps) -> Html {
 
     html! {
         <div {style}>
-            <CheckBox {on_toggle} is_checked = { prop.checked }/>
+            <CheckBox {ontoggle} ischecked = { prop.checked }/>
             <Ico />
             <NameDescriptor />
-            <FileTypeDescriptor /> 
+            <FileTypeDescriptor />
             <LastModifiedDescriptor />
         </div>
     }
@@ -46,7 +43,7 @@ fn FileTypeDescriptor() -> Html {
     display: flex;
     flex-direction: row;
     gap: 0;
-    left: 60%;
+    left: 55%;
     width: 20%;
     height: 100%;
     font-family: monospace;
@@ -70,7 +67,7 @@ fn NameDescriptor() -> Html {
     flex-direction: row;
     gap: 0;
     left: 10%;
-    width: 50%;
+    width: 45%;
     height: 100%;
     font-family: monospace;
     padding-left: 1%;
@@ -108,8 +105,8 @@ fn LastModifiedDescriptor() -> Html {
     display: flex;
     flex-direction: row;
     gap: 0;
-    left: 80%;
-    width: 20%;
+    left: 75%;
+    width: 25%;
     height: 100%;
     font-family: monospace;
     padding-left: 1%;

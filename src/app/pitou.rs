@@ -10,10 +10,6 @@ pub struct PitouProps {
 }
 
 impl PitouProps {
-    pub fn new(pitou: Pitou, theme: Theme) -> Self {
-        Self { pitou, theme }
-    }
-
     pub fn pitou(&self) -> &Pitou {
         &self.pitou
     }

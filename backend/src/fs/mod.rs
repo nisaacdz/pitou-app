@@ -99,7 +99,26 @@ impl WithMetadata {
 
 #[derive(PartialEq, Eq, Clone, Hash, Serialize, Deserialize)]
 pub struct Pitou {
+    #[serde(with = "serde_path")]
     pub(crate) path: PathBuf,
+}
+
+mod serde_path {
+    use super::PathBuf;
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+    pub fn serialize<S: Serializer>(path: &PathBuf, sz: S) -> Result<S::Ok, S::Error> {
+        let mod_str = path
+            .to_string_lossy()
+            .replace(std::path::MAIN_SEPARATOR, "/");
+        String::serialize(&mod_str, sz)
+    }
+
+    pub fn deserialize<'d, D: Deserializer<'d>>(dz: D) -> Result<PathBuf, D::Error> {
+        let de_str = String::deserialize(dz)?;
+        let path = de_str.replace("/", std::path::MAIN_SEPARATOR_STR);
+        Ok(path.into())
+    }
 }
 
 impl Pitou {

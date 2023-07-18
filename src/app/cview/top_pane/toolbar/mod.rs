@@ -1,15 +1,16 @@
+use crate::app::{PitouProps, Theme};
 use yew::prelude::*;
-use crate::app::{Theme, PitouProps};
 
-mod paste_actions;
 mod info_search;
+mod paste_actions;
 
-use paste_actions::*;
 use info_search::*;
+use paste_actions::*;
 
 #[function_component]
 pub(super) fn ToolBar(prop: &PitouProps) -> Html {
-    let style = format!("
+    let style = format!(
+        "
         display: flex;
         flex-direction: row;
         width: 100%;
@@ -17,7 +18,8 @@ pub(super) fn ToolBar(prop: &PitouProps) -> Html {
         padding-left: 1%;
         padding-left: 1%;
         gap: 0;
-    ");
+    "
+    );
 
     let pitou = prop.pitou();
     let theme = prop.theme();
@@ -51,7 +53,5 @@ impl HoverNameProp {
 
 #[function_component]
 pub fn HoverNameDisp(_prop: &HoverNameProp) -> Html {
-    html! {
-
-    }
+    html! {}
 }

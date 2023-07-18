@@ -157,7 +157,6 @@ pub fn CloudIcon(_prop: &ThemeProp) -> Html {
     }
 }
 
-
 #[function_component]
 pub fn CloudStorageIcon(_prop: &ThemeProp) -> Html {
     html! {
@@ -173,8 +172,6 @@ pub fn PasteIcon(_prop: &ThemeProp) -> Html {
         <img src="./public/icons/paste_icon.svg" alt="Paste Icon" />
     }
 }
-
-
 
 #[function_component]
 pub fn CutIcon(_prop: &ThemeProp) -> Html {
@@ -197,7 +194,6 @@ pub fn BookmarksIcon() -> Html {
         <img src="./public/icons/favorites_icon.svg" alt="bookmarks" />
     }
 }
-
 
 #[function_component]
 pub fn HistoryIcon(_prop: &ThemeProp) -> Html {

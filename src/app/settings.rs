@@ -20,7 +20,7 @@ impl Theme {
     pub const DEFAULT: Theme = Theme {
         background1: Color(50, 50, 50),
         foreground1: Color(255, 255, 255),
-        background2: Color(80,85, 90),
+        background2: Color(80, 85, 90),
         spare: Color(30, 30, 30),
     };
 
@@ -47,7 +47,8 @@ impl Theme {
 
 #[allow(unused)]
 pub struct Settings {
-    view: AppView
+    view: AppView,
+    theme: Theme,
 }
 
 impl Default for Settings {
@@ -60,6 +61,7 @@ impl Default for Settings {
 impl Settings {
     pub const DEFAULT: Settings = Settings {
         view: AppView::Content,
+        theme: Theme::DEFAULT,
     };
 
     pub fn settings_or_default() -> Self {
@@ -67,6 +69,10 @@ impl Settings {
     }
     pub fn view(&self) -> AppView {
         self.view
+    }
+
+    pub fn theme(&self) -> Theme {
+        self.theme
     }
 }
 

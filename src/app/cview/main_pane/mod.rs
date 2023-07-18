@@ -8,7 +8,7 @@ use rows::*;
 use serde_wasm_bindgen::{from_value, to_value};
 use wasm_bindgen_futures::spawn_local;
 
-use crate::app::{invoke, PitouArg, PitouProps};
+use crate::app::{invoke, PitouArg, Theme};
 use yew::prelude::*;
 
 macro_rules! do_nothing {
@@ -61,20 +61,36 @@ impl std::ops::Index<usize> for Selected {
     }
 }
 
+#[derive(PartialEq, Properties)]
+pub struct MainPaneProps {
+    pub pitou: Pitou,
+    pub theme: Theme,
+    pub updatedirectory: Callback<Pitou>,
+}
+
+impl MainPaneProps {
+    fn pitou(&self) -> &Pitou {
+        &self.pitou
+    }
+
+    fn theme(&self) -> Theme {
+        self.theme
+    }
+}
+
 #[function_component]
-pub fn MainPane(prop: &PitouProps) -> Html {
+pub fn MainPane(prop: &MainPaneProps) -> Html {
+    let directory = use_state(|| prop.pitou().clone());
     let children = use_state(|| None);
 
     {
         let children = children.clone();
-        let arg = to_value(&PitouArg {
-            pitou: prop.pitou().clone(),
-        })
-        .unwrap();
 
         use_effect_with_deps(
-            |_| {
+            |directory| {
+                let directory = directory.clone();
                 spawn_local(async move {
+                    let arg = to_value(&PitouArg { pitou: &*directory }).unwrap();
                     log!("spawning from main_pane");
                     let val = invoke("children", arg).await;
                     let values = from_value::<Vec<Pitou>>(val)
@@ -85,8 +101,12 @@ pub fn MainPane(prop: &PitouProps) -> Html {
                     children.set(Some((values, selected)));
                 })
             },
-            (),
+            directory.clone(),
         )
+    }
+
+    if &prop.pitou != &*directory {
+        directory.set(prop.pitou.clone());
     }
 
     let toggle_select = {
@@ -106,7 +126,7 @@ pub fn MainPane(prop: &PitouProps) -> Html {
     //TODO
     let onclick = { move |_| do_nothing!() };
 
-    let toggle_select_all = {
+    let toggleselectall = {
         let children = children.clone();
 
         move |_| match &*children {
@@ -143,8 +163,8 @@ pub fn MainPane(prop: &PitouProps) -> Html {
             .iter()
             .enumerate()
             .map(|(idx, pitou)| (idx, pitou.clone(), values.1[idx], toggle_select.clone()))
-            .map(|(idx, pitou, selected, toggle_select)| {
-                html! { <Row {idx} {pitou} {theme} {selected} {toggle_select}/> }
+            .map(|(idx, pitou, selected, toggleselect)| {
+                html! { <Row {idx} {pitou} {theme} {selected} {toggleselect} onclick = { prop.updatedirectory.clone() } /> }
             })
             .collect::<Html>()
     } else {
@@ -158,7 +178,7 @@ pub fn MainPane(prop: &PitouProps) -> Html {
 
     html! {
         <div {style} {onclick}>
-            <RowDescriptor {toggle_select_all} {checked} />
+            <RowDescriptor {toggleselectall} {checked} />
             {
                 entries
             }
@@ -168,17 +188,17 @@ pub fn MainPane(prop: &PitouProps) -> Html {
 
 #[derive(PartialEq, Properties)]
 pub struct CheckBoxProps {
-    pub is_checked: bool,
-    pub on_toggle: Callback<()>,
+    pub ischecked: bool,
+    pub ontoggle: Callback<()>,
 }
 
 #[function_component]
 pub fn CheckBox(prop: &CheckBoxProps) -> Html {
     let onclick = {
-        let on_toggle = prop.on_toggle.clone();
+        let ontoggle = prop.ontoggle.clone();
 
         move |_| {
-            on_toggle.emit(());
+            ontoggle.emit(());
         }
     };
 
@@ -186,6 +206,7 @@ pub fn CheckBox(prop: &CheckBoxProps) -> Html {
         display: flex;
         flex-direction: row;
         gap: 0;
+        left: 0%;
         width: 5%;
         height: 100%;
         justify-content: center;
@@ -194,7 +215,7 @@ pub fn CheckBox(prop: &CheckBoxProps) -> Html {
 
     html! {
         <div {style}>
-            <input type = "checkbox" {onclick} checked = { prop.is_checked }/>
+            <input type = "checkbox" {onclick} checked = { prop.ischecked }/>
         </div>
     }
 }

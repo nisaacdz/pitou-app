@@ -1,5 +1,5 @@
+use crate::app::{CopyIcon, CutIcon, PasteIcon, PitouProps};
 use yew::prelude::*;
-use crate::app::{PitouProps, CopyIcon, PasteIcon, CutIcon};
 
 use super::HoverNameDisp;
 
@@ -9,12 +9,12 @@ pub fn PasteButton(prop: &PitouProps) -> Html {
 
     let onmouseover = {
         let mouse_over = mouse_over.clone();
-        move |_| mouse_over.set(true) 
+        move |_| mouse_over.set(true)
     };
 
     let onmouseout = {
         let mouse_over = mouse_over.clone();
-        move |_|  mouse_over.set(false) 
+        move |_| mouse_over.set(false)
     };
 
     let style = format! {"
@@ -33,12 +33,12 @@ pub fn PasteButton(prop: &PitouProps) -> Html {
     "};
 
     let theme = prop.theme();
-    
+
     html! {
         <div {style} {onmouseover} {onmouseout}>
             <div class = "card" style = {icon_style}>
                 <PasteIcon {theme}/>
-                
+
             </div>
             {
                 if *mouse_over {
@@ -51,19 +51,18 @@ pub fn PasteButton(prop: &PitouProps) -> Html {
     }
 }
 
-
 #[function_component]
 pub fn CopyButton(prop: &PitouProps) -> Html {
     let mouse_over = use_state(|| false);
 
     let onmouseover = {
         let mouse_over = mouse_over.clone();
-        move |_| mouse_over.set(true) 
+        move |_| mouse_over.set(true)
     };
 
     let onmouseout = {
         let mouse_over = mouse_over.clone();
-        move |_|  mouse_over.set(false) 
+        move |_| mouse_over.set(false)
     };
 
     let style = format! {"
@@ -83,12 +82,12 @@ pub fn CopyButton(prop: &PitouProps) -> Html {
     "};
 
     let theme = prop.theme();
-    
+
     html! {
         <div {style} {onmouseover} {onmouseout}>
             <div class = "card" style = {icon_style}>
                 <CopyIcon { theme }/>
-                
+
             </div>
             {
                 if *mouse_over {
@@ -107,12 +106,12 @@ pub fn CutButton(prop: &PitouProps) -> Html {
 
     let onmouseover = {
         let mouse_over = mouse_over.clone();
-        move |_| mouse_over.set(true) 
+        move |_| mouse_over.set(true)
     };
 
     let onmouseout = {
         let mouse_over = mouse_over.clone();
-        move |_|  mouse_over.set(false) 
+        move |_| mouse_over.set(false)
     };
 
     let style = format! {"
@@ -132,12 +131,12 @@ pub fn CutButton(prop: &PitouProps) -> Html {
     "};
 
     let theme = prop.theme();
-    
+
     html! {
         <div {style} {onmouseover} {onmouseout}>
             <div class = "card" style = {icon_style}>
                 <CutIcon { theme }/>
-                
+
             </div>
             {
                 if *mouse_over {

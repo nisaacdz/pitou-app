@@ -1,5 +1,5 @@
 use crate::{
-    app::{PitouProps, DirIcon, Theme},
+    app::{DirIcon, PitouProps, Theme},
     background_color,
 };
 use backend::Pitou;
@@ -14,7 +14,8 @@ pub struct RowProps {
     pub(super) theme: Theme,
     pub(super) idx: usize,
     pub(super) selected: bool,
-    pub(super) toggle_select: Callback<usize>,
+    pub(super) toggleselect: Callback<usize>,
+    pub(super) onclick: Callback<Pitou>,
 }
 
 impl RowProps {
@@ -43,16 +44,23 @@ pub fn Row(prop: &RowProps) -> Html {
         move |_| is_hovered.set(false)
     };
 
-    let on_toggle = {
-        let toggle_select = prop.toggle_select.clone();
+    let ontoggle = {
+        let toggleselect = prop.toggleselect.clone();
         let idx = prop.idx;
 
         move |()| {
-            toggle_select.emit(idx);
+            toggleselect.emit(idx);
         }
     };
 
     let hover_background = prop.theme().background1();
+
+    let updatedirectory = {
+        let update_directory = prop.onclick.clone();
+        let pitou = prop.pitou.clone();
+
+        move |_| update_directory.emit(pitou.clone())
+    };
 
     let style = format! {"
         display: flex;
@@ -69,9 +77,9 @@ pub fn Row(prop: &RowProps) -> Html {
 
     html! {
         <div {style} {onmouseover} {onmouseout}>
-            <CheckBox {on_toggle} is_checked = { prop.selected } />
+            <CheckBox {ontoggle} ischecked = { prop.selected } />
             <FileIcon pitou = { pitou.clone() } {theme} />
-            <FileName pitou = { pitou.clone() } {theme} />
+            <FileName pitou = { pitou.clone() } {theme} {updatedirectory} />
             <FileType pitou = { pitou.clone() } {theme} />
             <LastModified pitou = { pitou.clone() } {theme}/>
         </div>
@@ -97,15 +105,22 @@ fn FileIcon(_prop: &PitouProps) -> Html {
     }
 }
 
+#[derive(PartialEq, Properties)]
+pub struct FileNameProps {
+    pub pitou: Pitou,
+    pub theme: Theme,
+    pub updatedirectory: Callback<()>,
+}
+
 #[function_component]
-fn FileName(prop: &PitouProps) -> Html {
-    let foreground = prop.theme().foreground1();
+fn FileName(prop: &FileNameProps) -> Html {
+    let foreground = prop.theme.foreground1();
     let style = format! {"
     display: flex;
     flex-direction: row;
     gap: 0;
     left: 10%;
-    width: 50%;
+    width: 45%;
     height: 100%;
     color: {foreground};
     font-family: monospace;
@@ -116,10 +131,15 @@ fn FileName(prop: &PitouProps) -> Html {
     white-space: nowrap;
     text-overflow: ellipsis;"};
 
-    let name = prop.pitou().name().unwrap_or_default();
-    
+    let onclick = {
+        let update_directory = prop.updatedirectory.clone();
+        move |_| update_directory.emit(())
+    };
+
+    let name = prop.pitou.name().unwrap_or_default();
+
     html! {
-        <div {style}>{ std::path::PathBuf::from(name).display() }</div>
+        <div {style} {onclick}>{ std::path::PathBuf::from(name).display() }</div>
     }
 }
 
@@ -129,7 +149,7 @@ fn FileType(prop: &PitouProps) -> Html {
     display: flex;
     flex-direction: row;
     gap: 0;
-    left: 60%;
+    left: 55%;
     width: 20%;
     height: 100%;
     color: {};
@@ -156,8 +176,8 @@ fn LastModified(prop: &PitouProps) -> Html {
     display: flex;
     flex-direction: row;
     gap: 0;
-    left: 80%;
-    width: 20%;
+    left: 75%;
+    width: 25%;
     height: 100%;
     color: {};
     font-family: monospace;
