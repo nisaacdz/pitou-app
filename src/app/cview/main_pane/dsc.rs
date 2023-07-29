@@ -1,10 +1,11 @@
 //use gloo::console::log;
 use yew::prelude::*;
 
-use super::CheckBox;
+use crate::app::Theme;
 
 #[derive(Properties, PartialEq)]
 pub struct RowDescriptorProps {
+    pub(super) theme: Theme,
     pub(super) toggleselectall: Callback<()>,
     pub(super) checked: bool,
 }
@@ -18,12 +19,16 @@ pub fn RowDescriptor(prop: &RowDescriptorProps) -> Html {
         }
     };
 
+    let background_color = prop.theme.background2();
+
     let style = format! {"
-        display: flex;
-        flex-direction: row;
-        gap: 0;
-        height: 5%;
-        width: 100%;
+    display: flex;
+    gap: 0;
+    height: 5%;
+    width: 100%;
+    top: 0;
+    left: 0;
+    background-color: {background_color};
     "};
 
     html! {
@@ -37,26 +42,50 @@ pub fn RowDescriptor(prop: &RowDescriptorProps) -> Html {
     }
 }
 
+#[derive(PartialEq, Properties)]
+pub struct CheckBoxProps {
+    pub ischecked: bool,
+    pub ontoggle: Callback<()>,
+}
+
+#[function_component]
+pub fn CheckBox(prop: &CheckBoxProps) -> Html {
+    let onclick = {
+        let ontoggle = prop.ontoggle.clone();
+
+        move |_| {
+            ontoggle.emit(());
+        }
+    };
+
+    let style = format! {"
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 5%;
+    height: 100%;
+    "};
+
+    html! {
+        <div {style}>
+            <input type = "checkbox" {onclick} checked = { prop.ischecked }/>
+        </div>
+    }
+}
+
 #[function_component]
 fn FileTypeDescriptor() -> Html {
     let style = format! {"
     display: flex;
-    flex-direction: row;
-    gap: 0;
-    left: 55%;
-    width: 20%;
-    height: 100%;
-    font-family: monospace;
-    padding-left: 1%;
-    font-size: 100%;
     align-items: center;
-    overflow: hidden;
     justify-content: center;
-    white-space: nowrap;
-    text-overflow: ellipsis;"};
+    width: 20%;
+    height: 100%;"};
 
     html! {
-        <div {style}> { "FILE TYPE" } </div>
+        <div {style}>
+            { "FILE TYPE" }
+        </div>
     }
 }
 
@@ -64,38 +93,31 @@ fn FileTypeDescriptor() -> Html {
 fn NameDescriptor() -> Html {
     let style = format! {"
     display: flex;
-    flex-direction: row;
-    gap: 0;
-    left: 10%;
-    width: 45%;
-    height: 100%;
-    font-family: monospace;
-    padding-left: 1%;
-    font-size: 100%;
     align-items: center;
-    overflow: hidden;
     justify-content: center;
-    white-space: nowrap;
-    text-overflow: ellipsis;"};
+    width: 45%;
+    height: 100%;"};
 
     html! {
-        <div {style}>{ "FILENAME" }</div>
+        <div {style}>
+            <span>{ "FILENAME" }</span>
+        </div>
     }
 }
 
 #[function_component]
 fn Ico() -> Html {
     let style = format! {"
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        left: 5%;
-        width: 5%;
-        height: 100%;
-        justify-content: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 5%;
+    height: 100%;
     "};
     html! {
-        <div {style}>{ "ico" }</div>
+        <div {style}>
+            <span> { "ico" } </span>
+        </div>
     }
 }
 
@@ -103,19 +125,11 @@ fn Ico() -> Html {
 fn LastModifiedDescriptor() -> Html {
     let style = format! {"
     display: flex;
-    flex-direction: row;
-    gap: 0;
-    left: 75%;
+    align-items: center;
+    justify-content: center;
     width: 25%;
     height: 100%;
-    font-family: monospace;
-    padding-left: 1%;
-    font-size: 100%;
-    align-items: center;
-    overflow: hidden;
-    justify-content: center;
-    white-space: nowrap;
-    text-overflow: ellipsis;"};
+    "};
 
     html! {
         <div {style}>{ "Last Modified" }</div>

@@ -1,8 +1,8 @@
 use yew::prelude::*;
 
 use crate::app::{
-    BackIcon, BookmarksIcon, CloudStorageIcon, HistoryIcon, HomeIcon, LockedIcon, PitouProps,
-    SettingsIcon, Theme,
+    BackIcon, BookmarksIcon, CloudStorageIcon, HistoryIcon, HomeIcon, LockedIcon, SettingsIcon,
+    Theme,
 };
 use backend::Pitou;
 
@@ -50,38 +50,56 @@ fn HoverNameDisp(prop: &HoverNameProp) -> Html {
     }
 }
 
-#[function_component]
-pub fn LeftPane(prop: &PitouProps) -> Html {
-    let pitou = prop.pitou();
-    let theme = prop.theme();
-    html! {
-        <div style = { format!{"
-            position: absolute;
-            display: flex;
-            flex-direction: column;
-            gap: 3%;
-            width: 4%;
-            bottom: 4%;
-            top: 10%;
-            padding-top: 3%;
-            background-color: {};
-            left: 0%;
-            margin-bottom: 1px;" ,
-        prop.theme().background1() } }>
+#[derive(Properties, PartialEq)]
+pub struct LeftPaneProps {
+    pub theme: Theme,
+}
 
-            <BackButton pitou = { pitou.clone() } {theme}/>
-            <HomeButton pitou = { pitou.clone() } {theme}/>
-            <HistoryButton pitou = { pitou.clone() } {theme}/>
-            <BookmarksButton pitou = { pitou.clone() } {theme}/>
-            <LockedButton pitou = { pitou.clone() } {theme}/>
-            <CloudButton pitou = { pitou.clone() } {theme}/>
-            <SettingsButton pitou = { pitou.clone() } {theme}/>
+#[function_component]
+pub fn LeftPane(prop: &LeftPaneProps) -> Html {
+    let theme = prop.theme;
+    let background_color = theme.background1();
+
+    let style = format! {"
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    gap: 3%;
+    width: 4%;
+    bottom: 4%;
+    top: 10%;
+    padding-top: 3%;
+    background-color: {background_color};
+    left: 0%;
+    margin-bottom: 1px;"};
+
+    html! {
+        <div {style}>
+
+            <BackButton {theme}/>
+            <HomeButton {theme}/>
+            <HistoryButton {theme}/>
+            <BookmarksButton {theme}/>
+            <LockedButton  {theme}/>
+            <CloudButton {theme}/>
+            <SettingsButton {theme}/>
         </div>
     }
 }
 
+#[derive(Properties, PartialEq)]
+pub struct ButtonProps {
+    pub theme: Theme,
+}
+
+impl ButtonProps {
+    fn theme(&self) -> Theme {
+        self.theme
+    }
+}
+
 #[function_component]
-pub fn BackButton(prop: &PitouProps) -> Html {
+pub fn BackButton(prop: &ButtonProps) -> Html {
     let mouse_over = use_state(|| false);
 
     let onmouseover = {
@@ -129,7 +147,7 @@ pub fn BackButton(prop: &PitouProps) -> Html {
 }
 
 #[function_component]
-pub fn HomeButton(prop: &PitouProps) -> Html {
+pub fn HomeButton(prop: &ButtonProps) -> Html {
     let mouse_over = use_state(|| false);
 
     let onmouseover = {
@@ -177,7 +195,7 @@ pub fn HomeButton(prop: &PitouProps) -> Html {
 }
 
 #[function_component]
-pub fn SettingsButton(prop: &PitouProps) -> Html {
+pub fn SettingsButton(prop: &ButtonProps) -> Html {
     let mouse_over = use_state(|| false);
 
     let onmouseover = {
@@ -224,7 +242,7 @@ pub fn SettingsButton(prop: &PitouProps) -> Html {
 }
 
 #[function_component]
-pub fn HistoryButton(prop: &PitouProps) -> Html {
+pub fn HistoryButton(prop: &ButtonProps) -> Html {
     let mouse_over = use_state(|| false);
 
     let onmouseover = {
@@ -272,7 +290,7 @@ pub fn HistoryButton(prop: &PitouProps) -> Html {
 }
 
 #[function_component]
-pub fn BookmarksButton(prop: &PitouProps) -> Html {
+pub fn BookmarksButton(prop: &ButtonProps) -> Html {
     let mouse_over = use_state(|| false);
 
     let onmouseover = {
@@ -320,7 +338,7 @@ pub fn BookmarksButton(prop: &PitouProps) -> Html {
 }
 
 #[function_component]
-pub fn CloudButton(prop: &PitouProps) -> Html {
+pub fn CloudButton(prop: &ButtonProps) -> Html {
     let mouse_over = use_state(|| false);
 
     let onmouseover = {
@@ -353,7 +371,7 @@ pub fn CloudButton(prop: &PitouProps) -> Html {
     html! {
         <div {style} {onmouseover} {onmouseout}>
             <div class = "card" style = {icon_style}>
-                <CloudStorageIcon theme = { prop.theme() }/>
+                <CloudStorageIcon />
 
             </div>
             {
@@ -368,7 +386,7 @@ pub fn CloudButton(prop: &PitouProps) -> Html {
 }
 
 #[function_component]
-pub fn LockedButton(prop: &PitouProps) -> Html {
+pub fn LockedButton(prop: &ButtonProps) -> Html {
     let mouse_over = use_state(|| false);
 
     let onmouseover = {
@@ -401,7 +419,7 @@ pub fn LockedButton(prop: &PitouProps) -> Html {
     html! {
         <div {style} {onmouseover} {onmouseout}>
             <div class = "card" style = {icon_style}>
-                <LockedIcon theme = { prop.theme() } />
+                <LockedIcon />
 
             </div>
             {

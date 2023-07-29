@@ -1,5 +1,9 @@
-use std::{path::PathBuf, time::SystemTime};
+use std::{
+    path::{Path, PathBuf},
+    time::{Duration, SystemTime},
+};
 
+use chrono::Local;
 use serde::{Deserialize /* Serializer, Deserializer*/, Serialize};
 
 use sysinfo::{DiskExt, DiskKind};
@@ -126,15 +130,29 @@ impl Pitou {
         &self.path
     }
 
-    pub fn name(&self) -> Option<&std::ffi::OsStr> {
-        self.path().file_name()
+    pub fn name(&self) -> String {
+        if self.path().as_os_str().len() == 0 {
+            String::from("Drives")
+        } else {
+            match self.path().file_name().unwrap().to_str() {
+                Some(v) => v.to_string(),
+                None => String::new(),
+            }
+        }
     }
 }
 
-impl<P: AsRef<std::path::Path>> From<P> for Pitou {
-    fn from(path: P) -> Self {
-        let path = PathBuf::from(path.as_ref());
+impl From<PathBuf> for Pitou {
+    fn from(path: PathBuf) -> Self {
         Self { path }
+    }
+}
+
+impl From<&Path> for Pitou {
+    fn from(value: &Path) -> Self {
+        Self {
+            path: PathBuf::from(value),
+        }
     }
 }
 
@@ -150,22 +168,106 @@ impl Into<PathBuf> for Pitou {
 #[derive(Clone, Serialize, Deserialize, PartialEq)]
 pub struct Properties {
     pub path: PathBuf,
-    pub size: u64,
-    pub is_dir: bool,
+    pub metadata: Metadata,
     pub locked: bool,
     pub bookmark: bool,
     pub history: bool,
-    pub accessed: Option<SystemTime>,
-    pub modified: Option<SystemTime>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq)]
+pub struct DateTime {
+    dt: SystemTime,
+    cur_dt: SystemTime,
+}
+
+impl DateTime {
+    pub fn format(&self) -> String {
+        use chrono::Datelike;
+        let ellapsed = self.cur_dt.duration_since(self.dt).unwrap_or_default();
+
+        let cur_dt = chrono::DateTime::<Local>::from(self.cur_dt);
+        let dt = chrono::DateTime::<Local>::from(self.dt);
+
+        if ellapsed < Duration::from_secs(3600) {
+            // use chrono::NaiveDate;
+            // let dt = NaiveDate::from_ymd_opt(2015, 9, 5).unwrap().and_hms_opt(23, 56, 4).unwrap();
+            // assert_eq!(dt.format("%Y-%m-%d %H:%M:%S").to_string(), "2015-09-05 23:56:04");
+            // assert_eq!(dt.format("around %l %p on %b %-d").to_string(), "around 11 PM on Sep 5");
+            // The resulting DelayedFormat can be formatted directly via the Display trait.
+
+            // assert_eq!(format!("{}", dt.format("%Y-%m-%d %H:%M:%S")), "2015-09-05 23:56:04");
+            // assert_eq!(format!("{}", dt.format("around %l %p on %b %-d")), "around 11 PM on Sep 5");
+            if ellapsed < Duration::from_secs(60) {
+                format!("few seconds ago")
+            } else if ellapsed < Duration::from_secs(120) {
+                format!("1 minute ago")
+            } else {
+                format!("{} minutes ago", ellapsed.as_secs() / 60)
+            }
+        } else if dt.day() == cur_dt.day() {
+            dt.format("%l:%M %p today").to_string()
+        } else if dt.year() == cur_dt.year() {
+            dt.format("%l %p on %b %-d").to_string()
+        } else {
+            dt.format("%l %p on %Y-%m-%d").to_string()
+            //chrono.format("%Y-%m-%d %H:%M:%S").to_string()
+            //String::new()
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq)]
+pub enum PitouType {
+    Directory,
+    File,
+    Link,
+}
+
+impl PitouType {
+    pub fn is_dir(self) -> bool {
+        matches!(self, PitouType::Directory)
+    }
+
+    pub fn is_file(self) -> bool {
+        matches!(self, PitouType::File)
+    }
+
+    pub fn is_link(self) -> bool {
+        matches!(self, PitouType::Link)
+    }
+}
+
+impl std::fmt::Display for PitouType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let val = match self {
+            PitouType::Directory => "Directory",
+            PitouType::File => "File",
+            PitouType::Link => "Link",
+        };
+        write!(f, "{}", val)
+    }
+}
+
+impl From<std::fs::FileType> for PitouType {
+    fn from(value: std::fs::FileType) -> Self {
+        if value.is_symlink() {
+            PitouType::Link
+        } else if value.is_file() {
+            PitouType::File
+        } else if value.is_dir() {
+            PitouType::Directory
+        } else {
+            unreachable!()
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
 pub struct Metadata {
     pub(crate) len: u64,
-    pub(crate) size: u64,
-    pub(crate) is_dir: bool,
-    pub(crate) accessed: Option<SystemTime>,
-    pub(crate) modified: Option<SystemTime>,
+    pub(crate) accessed: Option<DateTime>,
+    pub(crate) modified: Option<DateTime>,
+    pub(crate) filetype: PitouType,
 }
 
 impl Metadata {
@@ -173,20 +275,20 @@ impl Metadata {
         self.len
     }
 
-    pub fn size(&self) -> u64 {
-        self.size
-    }
-
     pub fn is_dir(&self) -> bool {
-        self.is_dir
+        self.filetype.is_dir()
     }
 
-    pub fn accessed(&self) -> Option<SystemTime> {
+    pub fn accessed(&self) -> Option<DateTime> {
         self.accessed
     }
 
-    pub fn modified(&self) -> Option<SystemTime> {
+    pub fn modified(&self) -> Option<DateTime> {
         self.modified
+    }
+
+    pub fn file_type(&self) -> PitouType {
+        self.filetype
     }
 }
 

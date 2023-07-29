@@ -14,6 +14,7 @@ wasm-bindgen-futures = "0.4.37"
 wasm-bindgen = { version = "0.2.87", features = ["serde-serialize"] }
 web-sys = "0.3.64"
 js-sys = "0.3.64"
+#tokio = { version = "1.29.1", features = ["rt-multi-thread"] }
 
 [workspace]
 members = ["src-tauri", "backend"]

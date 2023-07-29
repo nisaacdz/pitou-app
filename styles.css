@@ -27,21 +27,30 @@ body {
 }
 
 .card:hover {
-  filter: brightness(300%);
+  transform: scale(1.2);
 }
 
 .card:active {
-  transform: scale(1.25);
-}
-
-
-.tab-item {
-  display: flex;
-  flex-direction: row;
-  gap: 0;
+  filter: brightness(300%);
 }
 
 .absc {
   color: #000;
   display: flexbox;
+  font-size: small;
+  flex-shrink: 0;
+}
+
+.popup {
+  position: fixed;
+  width: 30%;
+  height: 30%;
+  left: 35%;
+  top: 35%;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 3px;
+  gap: 5%;
+  justify-content: flex-end;
 }

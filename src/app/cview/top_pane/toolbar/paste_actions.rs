@@ -1,150 +1,172 @@
-use crate::app::{CopyIcon, CutIcon, PasteIcon, PitouProps};
+use crate::app::{invoke, ClipboardIcon, CopyIcon, CutIcon, ItemsArg, PasteIcon, PitouArg, Theme};
+use serde_wasm_bindgen::to_value;
+use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
 
-use super::HoverNameDisp;
+use super::{NameField, TopButtonProps};
+
+#[derive(PartialEq, Properties)]
+pub struct PasteButtonProps {
+    pub theme: Theme,
+    pub updateui: Callback<()>,
+}
 
 #[function_component]
-pub fn PasteButton(prop: &PitouProps) -> Html {
-    let mouse_over = use_state(|| false);
+pub fn PasteButton(prop: &PasteButtonProps) -> Html {
+    let updateui = prop.updateui.clone();
 
-    let onmouseover = {
-        let mouse_over = mouse_over.clone();
-        move |_| mouse_over.set(true)
-    };
-
-    let onmouseout = {
-        let mouse_over = mouse_over.clone();
-        move |_| mouse_over.set(false)
+    let onclick = move |_| {
+        let updateui = updateui.clone();
+        crate::data::directory()
+            .map(|pitou| {
+                spawn_local(async move {
+                    let args = to_value(&PitouArg { pitou }).unwrap();
+                    invoke("paste", args).await;
+                    updateui.emit(());
+                });
+            })
+            .unwrap_or_default();
     };
 
     let style = format! {"
-        position: relative;
-        width: 3%;
-        height: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+    width: 3%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     "};
 
     let icon_style = format! {"
         display: flex;
-        height: 80%;
+        align-items: center;
+        justify-content: center;
+        height: 70%;
         width: 100%;
     "};
 
-    let theme = prop.theme();
+    let theme = prop.theme;
 
     html! {
-        <div {style} {onmouseover} {onmouseout}>
+        <div {style} {onclick}>
             <div class = "card" style = {icon_style}>
-                <PasteIcon {theme}/>
-
+                <PasteIcon />
             </div>
-            {
-                if *mouse_over {
-                    html! { <HoverNameDisp name = { "paste" }  {theme} /> }
-                } else {
-                    html! {}
-                }
-            }
+            <NameField name = { "paste" }  { theme } />
         </div>
     }
 }
 
 #[function_component]
-pub fn CopyButton(prop: &PitouProps) -> Html {
-    let mouse_over = use_state(|| false);
-
-    let onmouseover = {
-        let mouse_over = mouse_over.clone();
-        move |_| mouse_over.set(true)
-    };
-
-    let onmouseout = {
-        let mouse_over = mouse_over.clone();
-        move |_| mouse_over.set(false)
+pub fn CopyButton(prop: &TopButtonProps) -> Html {
+    let onclick = move |_| {
+        crate::data::get_selected()
+            .map(|items| {
+                spawn_local(async move {
+                    let args = to_value(&ItemsArg { items: &items }).unwrap();
+                    invoke("copy", args).await;
+                });
+            })
+            .unwrap_or_default()
     };
 
     let style = format! {"
-        position: relative;
-        width: 3%;
-        top: 0;
-        bottom: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+    width: 3%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     "};
 
     let icon_style = format! {"
         display: flex;
-        height: 80%;
+        align-items: center;
+        justify-content: center;
+        height: 70%;
         width: 100%;
     "};
 
-    let theme = prop.theme();
+    let theme = prop.theme;
 
     html! {
-        <div {style} {onmouseover} {onmouseout}>
+        <div {style} {onclick}>
             <div class = "card" style = {icon_style}>
-                <CopyIcon { theme }/>
+                <CopyIcon />
 
             </div>
-            {
-                if *mouse_over {
-                    html! { <HoverNameDisp name = { "copy" }  { theme } /> }
-                } else {
-                    html! {}
-                }
-            }
+            <NameField name = { "copy" }  { theme } />
         </div>
     }
 }
 
 #[function_component]
-pub fn CutButton(prop: &PitouProps) -> Html {
-    let mouse_over = use_state(|| false);
-
-    let onmouseover = {
-        let mouse_over = mouse_over.clone();
-        move |_| mouse_over.set(true)
-    };
-
-    let onmouseout = {
-        let mouse_over = mouse_over.clone();
-        move |_| mouse_over.set(false)
+pub fn CutButton(prop: &TopButtonProps) -> Html {
+    let onclick = move |_| {
+        crate::data::get_selected()
+            .map(|items| {
+                spawn_local(async move {
+                    let args = to_value(&ItemsArg { items: &items }).unwrap();
+                    invoke("cut", args).await;
+                });
+            })
+            .unwrap_or_default()
     };
 
     let style = format! {"
-        position: relative;
-        width: 3%;
-        top: 0;
-        bottom: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+    width: 3%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     "};
 
     let icon_style = format! {"
         display: flex;
-        height: 80%;
+        align-items: center;
+        justify-content: center;
+        height: 70%;
         width: 100%;
     "};
 
-    let theme = prop.theme();
+    let theme = prop.theme;
 
     html! {
-        <div {style} {onmouseover} {onmouseout}>
+        <div {style} {onclick}>
             <div class = "card" style = {icon_style}>
-                <CutIcon { theme }/>
+                <CutIcon />
 
             </div>
-            {
-                if *mouse_over {
-                    html! { <HoverNameDisp name = { "cut" }  { theme } /> }
-                } else {
-                    html! {}
-                }
-            }
+            <NameField name = { "cut" }  { theme } />
+        </div>
+    }
+}
+
+#[function_component]
+pub fn ClipboardButton(prop: &TopButtonProps) -> Html {
+    let style = format! {"
+    width: 3%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    "};
+
+    let icon_style = format! {"
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 70%;
+    width: 100%;
+    "};
+
+    let theme = prop.theme;
+
+    html! {
+        <div {style}>
+            <div class = "card" style = {icon_style}>
+                <ClipboardIcon />
+
+            </div>
+            <NameField name = { "clipboard" }  { theme } />
         </div>
     }
 }

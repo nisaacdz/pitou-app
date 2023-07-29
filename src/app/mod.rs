@@ -1,11 +1,7 @@
 use backend::Pitou;
 use serde::Serialize;
-use serde_wasm_bindgen::{from_value, to_value};
 //use serde_wasm_bindgen::*;
 use wasm_bindgen::prelude::*;
-use wasm_bindgen_futures::spawn_local;
-//use wasm_bindgen_futures::*;
-use gloo::console::log;
 use yew::prelude::*;
 
 #[wasm_bindgen]
@@ -17,6 +13,11 @@ extern "C" {
 #[derive(Serialize)]
 pub(crate) struct PitouArg<'a> {
     pub pitou: &'a Pitou,
+}
+
+#[derive(Serialize)]
+pub(crate) struct ItemsArg<'a> {
+    pub items: &'a Vec<Pitou>,
 }
 
 #[derive(Serialize)]
@@ -41,37 +42,9 @@ pub fn App() -> Html {
     let settings = use_state(|| Settings::DEFAULT);
     let theme = use_state(|| Theme::DEFAULT);
 
-    let directory = use_state(|| None);
-
-    {
-        let directory = directory.clone();
-        let arg = to_value(&PitouNoArg).unwrap();
-        use_effect_with_deps(
-            |_| {
-                spawn_local(async move {
-                    log!("spawning from app");
-                    let js_val = invoke("get_debug_file", arg).await;
-                    let res = from_value::<backend::Pitou>(js_val).unwrap();
-                    directory.set(Some(res))
-                })
-            },
-            (),
-        );
-    }
-
-    let updatedirectory = {
-        let directory = directory.clone();
-        move |new_dir| directory.set(Some(new_dir))
-    };
-
     html! {
         match settings.view() {
-            AppView::Content =>
-            if let Some(pitou) = &*directory {
-                html! { <ContentView pitou = { pitou.clone() } theme = {*theme} {updatedirectory} /> }
-            } else {
-                html! { <h3>{ "Waiting" }</h3> }
-            },
+            AppView::Content => html! { <ContentView theme = {*theme} /> },
             AppView::Opening => html! { <h1>{"Hello Opening View"}</h1> },
             AppView::Settings => html! { <h1>{"Hello Settings"}</h1> },
         }

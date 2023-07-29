@@ -1,11 +1,52 @@
 use backend::Pitou;
+use serde_wasm_bindgen::{from_value, to_value};
+use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
 
-use crate::{app::PitouProps, brightness, color};
+use crate::{
+    app::{invoke, PitouArg, Theme},
+    /*brightness*/ color,
+};
+
+#[derive(PartialEq, Properties)]
+pub struct AncestorsTabsProps {
+    pub pitou: Option<Pitou>,
+    pub theme: Theme,
+    pub updatedirectory: Callback<Pitou>,
+}
 
 #[function_component]
-pub(super) fn AncestorsTabs(prop: &PitouProps) -> Html {
-    let theme = prop.theme();
+pub(super) fn AncestorsTabs(prop: &AncestorsTabsProps) -> Html {
+    let directory = use_state(|| prop.pitou.clone());
+    let ancestors = use_state(|| None);
+    let clicked = use_state(|| false);
+
+    {
+        let ancestors = ancestors.clone();
+
+        use_effect_with_deps(
+            |directory| {
+                let directory = directory.clone();
+
+                spawn_local(async move {
+                    if let Some(directory) = &*directory {
+                        let args = to_value(&PitouArg { pitou: &*directory }).unwrap();
+                        let js_res = invoke("ancestors", args).await;
+                        let res = from_value::<Vec<Pitou>>(js_res).unwrap();
+                        ancestors.set(Some(res));
+                        clicked.set(false);
+                    }
+                });
+            },
+            directory.clone(),
+        );
+    }
+
+    if &prop.pitou != &*directory {
+        directory.set(prop.pitou.clone())
+    }
+
+    let theme = prop.theme;
 
     let foreground_color = theme.foreground1();
     let background_color_2 = theme.background2();
@@ -36,12 +77,15 @@ pub(super) fn AncestorsTabs(prop: &PitouProps) -> Html {
         overflow: hidden;
     "};
 
-    let entries = prop
-        .pitou()
-        .path()
-        .ancestors()
-        .map(|p| html! { <Ancestor pitou = { Pitou::from(p) } {theme} /> })
-        .collect::<Html>();
+    let entries =
+        if let Some(v) = &*ancestors {
+            v.iter()
+        .map(|p| (p.clone(), prop.updatedirectory.clone()))
+        .map(|(pitou, updatedirectory)| html! { <Ancestor {pitou} {theme} {updatedirectory} /> })
+        .collect::<Html>()
+        } else {
+            html! {}
+        };
 
     html! {
         <div style = {outer_style}>
@@ -52,9 +96,16 @@ pub(super) fn AncestorsTabs(prop: &PitouProps) -> Html {
     }
 }
 
+#[derive(PartialEq, Properties)]
+pub struct AncestorProps {
+    pitou: Pitou,
+    theme: Theme,
+    updatedirectory: Callback<Pitou>,
+}
+
 #[function_component]
-pub(super) fn Ancestor(prop: &PitouProps) -> Html {
-    let mouse_is_overed = use_state(|| false);
+pub(super) fn Ancestor(prop: &AncestorProps) -> Html {
+    let mouse_is_overed = use_state_eq(|| false);
 
     let onmouseover = {
         let mouse_is_overed = mouse_is_overed.clone();
@@ -65,27 +116,29 @@ pub(super) fn Ancestor(prop: &PitouProps) -> Html {
         move |_| mouse_is_overed.set(false)
     };
 
-    let background_color = prop.theme().background2();
-    let border_color = prop.theme().spare();
+    let pitou = prop.pitou.clone();
+    let theme = prop.theme;
+
+    let background_color = theme.background2();
+    let border_color = theme.spare();
 
     let style = format! {"
         height: calc(100% - 2px);
         position: relative;
         top: 0;
+        display: flex;
+        flex-direction: row;
+        gap: 0;
         width: auto;
         border: 1px solid {border_color};
         background-color: {background_color};
         font-size: 80%;
         {}
-        {}
-    ", color!(*mouse_is_overed, prop.theme().spare()), brightness!(*mouse_is_overed, 300)};
-
-    let pitou = prop.pitou().clone();
-    let theme = prop.theme();
+    ", color!(*mouse_is_overed, prop.theme.spare())/*, brightness!(*mouse_is_overed, 300) */};
 
     html! {
-        <div class = "tab-item" {style} {onmouseover} {onmouseout}>
-            <TabName {pitou} {theme} />
+        <div class = "card" {style} {onmouseover} {onmouseout}>
+            <TabName {pitou} {theme} updatedirectory = { prop.updatedirectory.clone() } />
             <Side/>
         </div>
     }
@@ -108,8 +161,15 @@ pub(super) fn Side() -> Html {
     }
 }
 
+#[derive(PartialEq, Properties)]
+pub struct TabNameProps {
+    pitou: Pitou,
+    theme: Theme,
+    updatedirectory: Callback<Pitou>,
+}
+
 #[function_component]
-pub(super) fn TabName(prop: &PitouProps) -> Html {
+pub(super) fn TabName(prop: &TabNameProps) -> Html {
     let style = format! {"
         width: auto;
         height: 100%;
@@ -126,7 +186,15 @@ pub(super) fn TabName(prop: &PitouProps) -> Html {
         white-space: nowrap;
         flex-wrap: nowrap;
     "};
+
+    let updatedirectory = {
+        let pitou = prop.pitou.clone();
+        let updatedirectory = prop.updatedirectory.clone();
+
+        move |_| updatedirectory.emit(pitou.clone())
+    };
+
     html! {
-        <span {style}>{ std::path::PathBuf::from(prop.pitou().name().unwrap_or_default()).display() }</span>
+        <span {style} onclick = { updatedirectory }>{ prop.pitou.name() }</span>
     }
 }

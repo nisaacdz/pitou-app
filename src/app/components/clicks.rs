@@ -29,7 +29,7 @@ fn Copy() -> Html {
 }
 
 #[function_component]
-pub fn Delete() -> Html {
+fn Delete() -> Html {
     html! {}
 }
 

@@ -9,8 +9,17 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             get_debug_file,
             properties,
+            metadata,
+            ancestors,
             children,
-            siblings
+            siblings,
+            copy,
+            cut,
+            paste,
+            rename,
+            delete,
+            createdir,
+            createfile
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

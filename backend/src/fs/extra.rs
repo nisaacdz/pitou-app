@@ -1,6 +1,6 @@
 use super::Drive;
-use crate::{Filter, Metadata, Pitou, Properties, Sort, WithMetadata};
-use std::{io, path::PathBuf};
+use crate::{DateTime, Filter, Metadata, Pitou, Properties, Sort, WithMetadata};
+use std::{io, path::PathBuf, time::SystemTime};
 use sysinfo::{System, SystemExt};
 use tokio::fs;
 
@@ -76,12 +76,7 @@ impl Pitou {
 
     pub async fn metadata(&self) -> io::Result<Metadata> {
         let metadata = fs::metadata(self.path()).await?;
-        let mut size = metadata.len();
-        if metadata.is_dir() {
-            size += directory_size(self.path()).await.unwrap_or(0);
-        }
-
-        Ok((metadata, size).into())
+        Ok(metadata.into())
     }
 
     pub async fn with_metadata(self) -> io::Result<WithMetadata> {
@@ -94,11 +89,6 @@ impl Pitou {
 
     pub async fn refresh(&self) -> io::Result<Metadata> {
         self.metadata().await
-    }
-
-    pub async fn size(&self) -> io::Result<u64> {
-        let metadata = self.metadata().await?;
-        Ok(metadata.size())
     }
 
     pub async fn children_filtered_and_sorted(
@@ -120,6 +110,10 @@ impl Pitou {
     }
 
     pub async fn children(&self) -> io::Result<Vec<Pitou>> {
+        if self.path().as_os_str().len() == 0 {
+            return Ok(drives().into_iter().map(|drive| drive.into()).collect());
+        }
+
         let mut read_dir = fs::read_dir(self.path()).await?;
         let mut res: Vec<Pitou> = Vec::new();
         while let Some(entry) = read_dir.next_entry().await? {
@@ -144,31 +138,35 @@ impl Pitou {
         let locked = true;
         let bookmark = true;
         let history = true;
-        let size = metadata.size();
-        let is_dir = metadata.is_dir();
-        let accessed = metadata.accessed();
-        let modified = metadata.modified();
 
         Ok(Properties {
             path,
             locked,
-            size,
             bookmark,
             history,
-            accessed,
-            modified,
-            is_dir,
+            metadata,
         })
+    }
+
+    pub async fn ancestors(&self) -> Vec<Pitou> {
+        if self.path().as_os_str().len() == 0 {
+            return vec![PathBuf::from("").into()];
+        }
+        self.path()
+            .ancestors()
+            .map(|a| a.into())
+            .chain(Some(PathBuf::from("").into()))
+            .collect()
     }
 }
 
 pub async fn debug_with_real_dir() -> Pitou {
-    let pitou = PathBuf::from("D:/Workspace/rust");
+    let pitou = PathBuf::from("d:/Workspace/rust");
     pitou.into()
 }
 
 #[async_recursion::async_recursion]
-async fn directory_size<P: AsRef<std::path::Path> + Send>(path: P) -> std::io::Result<u64> {
+pub async fn directory_size<P: AsRef<std::path::Path> + Send>(path: P) -> std::io::Result<u64> {
     let mut total_size = 0;
 
     let mut entries = tokio::fs::read_dir(path).await?;
@@ -187,20 +185,32 @@ async fn directory_size<P: AsRef<std::path::Path> + Send>(path: P) -> std::io::R
     Ok(total_size)
 }
 
-impl From<(std::fs::Metadata, u64)> for Metadata {
-    fn from(value: (std::fs::Metadata, u64)) -> Self {
-        let (metadata, size) = value;
-        let is_dir = metadata.is_dir();
-        let modified = metadata.modified().ok();
-        let len = metadata.len();
-        let accessed = metadata.accessed().ok();
+impl AsRef<std::path::Path> for Pitou {
+    fn as_ref(&self) -> &std::path::Path {
+        &self.path()
+    }
+}
 
+impl From<std::fs::Metadata> for Metadata {
+    fn from(metadata: std::fs::Metadata) -> Self {
+        let modified: Option<crate::DateTime> = metadata.modified().ok().map(Into::into);
+        let len = metadata.len();
+        let accessed = metadata.accessed().map(Into::into).ok();
+        let filetype = metadata.file_type().into();
         Self {
             modified,
-            size,
             len,
             accessed,
-            is_dir,
+            filetype,
+        }
+    }
+}
+
+impl From<SystemTime> for DateTime {
+    fn from(dt: SystemTime) -> Self {
+        DateTime {
+            dt,
+            cur_dt: SystemTime::now(),
         }
     }
 }

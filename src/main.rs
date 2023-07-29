@@ -1,4 +1,5 @@
 mod app;
+pub mod data;
 
 use app::App;
 

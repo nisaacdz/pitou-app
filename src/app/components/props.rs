@@ -12,9 +12,3 @@ impl<'a> From<&'a PitouProps> for ThemeProp {
         ThemeProp { theme }
     }
 }
-
-impl ThemeProp {
-    pub fn theme(&self) -> &Theme {
-        &self.theme
-    }
-}

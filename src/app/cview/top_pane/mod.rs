@@ -1,6 +1,5 @@
+use backend::Pitou;
 use yew::prelude::*;
-
-use crate::app::PitouProps;
 
 mod ancestors;
 mod toolbar;
@@ -8,26 +7,37 @@ mod toolbar;
 use ancestors::*;
 use toolbar::*;
 
+use crate::app::Theme;
+
+#[derive(PartialEq, Properties)]
+pub struct TopPaneProps {
+    pub theme: Theme,
+    pub updatedirectory: Callback<Pitou>,
+    pub pitou: Option<Pitou>,
+    pub updateui: Callback<()>,
+}
+
 #[function_component]
-pub fn TopPane(prop: &PitouProps) -> Html {
-    let theme = prop.theme();
-    let pitou = prop.pitou();
+pub fn TopPane(prop: &TopPaneProps) -> Html {
+    let theme = prop.theme;
+    let pitou = prop.pitou.clone();
 
     let background_color = theme.background1();
     let style = format! {"
-        background-color: {background_color};
-        top: 0%;
-        height: 10%;
-        left: 0%;
-        right: 0%;
-        position: absolute;
-        display: flex;
-        flex-direction: column;
-        gap: 0;"};
+    background-color: {background_color};
+    top: 0%;
+    left: 0%;
+    position: relative;
+    height: 10%;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0;"};
+
     html! {
         <div {style}>
-            <ToolBar pitou = { pitou.clone() } {theme}/>
-            <AncestorsTabs pitou = { pitou.clone() } {theme}/>
+            <ToolBar {theme} updatedirectory = { prop.updatedirectory.clone() } updateui = {prop.updateui.clone()} />
+            <AncestorsTabs {pitou} {theme} updatedirectory = { prop.updatedirectory.clone() } />
         </div>
     }
 }
