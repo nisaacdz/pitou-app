@@ -3,11 +3,13 @@ use yew::prelude::*;
 
 use crate::app::Theme;
 
+use super::Selected;
+
 #[derive(Properties, PartialEq)]
 pub struct RowDescriptorProps {
     pub(super) theme: Theme,
     pub(super) toggleselectall: Callback<()>,
-    pub(super) checked: bool,
+    pub(super) selected: Option<Selected>,
 }
 
 #[function_component]
@@ -33,7 +35,7 @@ pub fn RowDescriptor(prop: &RowDescriptorProps) -> Html {
 
     html! {
         <div {style}>
-            <CheckBox {ontoggle} ischecked = { prop.checked }/>
+            <CheckBox {ontoggle} ischecked = { prop.selected.as_ref().map(|s| s.all_checked()).unwrap_or(false) }/>
             <Ico />
             <NameDescriptor />
             <FileTypeDescriptor />

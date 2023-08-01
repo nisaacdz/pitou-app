@@ -12,16 +12,13 @@ pub async fn properties(pitou: backend::Pitou) -> backend::Properties {
 }
 
 #[tauri::command]
-pub async fn metadata(pitou: backend::Pitou) -> backend::Metadata {
-    pitou
-        .metadata()
-        .await
-        .expect("cannot retrieve properties of selected file")
+pub async fn metadata(pitou: backend::Pitou) -> Option<backend::Metadata> {
+    pitou.metadata().await.ok()
 }
 
 #[tauri::command]
 pub async fn ancestors(pitou: backend::Pitou) -> Vec<backend::Pitou> {
-    pitou.ancestors().await
+    pitou.ancestors()
 }
 
 #[tauri::command]
@@ -53,8 +50,9 @@ pub(crate) fn paste(pitou: backend::Pitou) {
 }
 
 #[tauri::command]
-pub(crate) async fn delete(items: Vec<backend::Pitou>) {
-    backend::Pitou::delete(items).await.expect("failed to delete items");
+pub(crate) fn delete(items: Vec<backend::Pitou>) {
+    backend::Pitou::delete(items)
+        .expect("failed to delete items");
 }
 
 #[tauri::command]
@@ -70,4 +68,9 @@ pub(crate) async fn createfile(pitou: backend::Pitou) {
 #[tauri::command]
 pub(crate) async fn createdir(pitou: backend::Pitou) {
     backend::Pitou::create_dir(pitou).await
+}
+
+#[tauri::command]
+pub(crate) async fn clipboard() -> &'static std::collections::LinkedList<Vec<backend::Pitou>> {
+    backend::actions::clipboard::content()
 }

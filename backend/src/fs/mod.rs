@@ -1,5 +1,5 @@
 use std::{
-    path::{Path, PathBuf},
+    path::{self, Path, PathBuf},
     time::{Duration, SystemTime},
 };
 
@@ -108,19 +108,20 @@ pub struct Pitou {
 }
 
 mod serde_path {
-    use super::PathBuf;
+    use super::{path, PathBuf};
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
     pub fn serialize<S: Serializer>(path: &PathBuf, sz: S) -> Result<S::Ok, S::Error> {
-        let mod_str = path
-            .to_string_lossy()
-            .replace(std::path::MAIN_SEPARATOR, "/");
+        let mod_str = path.to_string_lossy().replace(path::MAIN_SEPARATOR, "/");
         String::serialize(&mod_str, sz)
     }
 
     pub fn deserialize<'d, D: Deserializer<'d>>(dz: D) -> Result<PathBuf, D::Error> {
         let de_str = String::deserialize(dz)?;
-        let path = de_str.replace("/", std::path::MAIN_SEPARATOR_STR);
+        let mut path = de_str.replace("/", path::MAIN_SEPARATOR_STR);
+        if path.len() == 2 && path.ends_with(":") {
+            path.push_str(path::MAIN_SEPARATOR_STR);
+        }
         Ok(path.into())
     }
 }
@@ -139,6 +140,10 @@ impl Pitou {
                 None => String::new(),
             }
         }
+    }
+
+    pub fn ancestors(&self) -> Vec<Pitou> {
+        self.path().ancestors().map(|path| path.into()).collect()
     }
 }
 
@@ -306,6 +311,8 @@ pub enum Sort {
     Accessed(bool),
 }
 
+mod error;
+pub use error::*;
 #[cfg(feature = "tauri")]
 mod extra;
 

@@ -39,12 +39,13 @@ body {
   display: flexbox;
   font-size: small;
   flex-shrink: 0;
+  font-size: 0;
 }
+
 
 .popup {
   position: fixed;
   width: 30%;
-  height: 30%;
   left: 35%;
   top: 35%;
   z-index: 1;

@@ -20,7 +20,8 @@ tokio = { version = "1.29.1", features = [
     "sync",
     "time",
     "macros"], optional = true }
+trash = { version = "3.0.6", optional = true }
 
 
 [features]
-tauri = ["diesel", "tokio", "libsqlite3-sys", "async-recursion"]
+tauri = ["diesel", "tokio", "libsqlite3-sys", "async-recursion", "trash"]

@@ -21,8 +21,7 @@ pub struct ToolBarProps {
 
 #[function_component]
 pub(super) fn ToolBar(prop: &ToolBarProps) -> Html {
-    let style = format!(
-        "
+    let style = format! {"
     display: flex;
     flex-shrink: 0;
     flex-direction: row;
@@ -30,8 +29,10 @@ pub(super) fn ToolBar(prop: &ToolBarProps) -> Html {
     height: 60%;
     padding-left: 1%;
     padding-left: 1%;
-    column-gap: 5px;"
-    );
+    overflow: hidden;
+    column-gap: 5px;
+    font-size: 90%;"
+    };
 
     let theme = prop.theme;
 

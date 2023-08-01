@@ -1,16 +1,17 @@
+use std::{rc::Rc, cell::RefCell};
+
 use backend::Pitou;
-use serde_wasm_bindgen::to_value;
-use wasm_bindgen_futures::spawn_local;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
-use crate::app::{Theme, invoke, PitouArg};
+use crate::app::Theme;
 
 #[derive(PartialEq, Properties)]
 pub struct NewDirPopUpProps {
     pub directory: Pitou,
     pub theme: Theme,
-    pub finished: Callback<()>,
+    pub onclickcancel: Callback<()>,
+    pub onclickok: Callback<Rc<RefCell<String>>>,
 }
 
 #[function_component]
@@ -24,40 +25,34 @@ pub fn NewDirPopUp(prop: &NewDirPopUpProps) -> Html {
     "};
 
     let folder_name = prop.directory.name();
-    let oldname = format! {"Create new directory in: {folder_name}"};
+    let oldname = format! {"Create new file in: {folder_name}"};
 
-    let filename = std::rc::Rc::new(std::cell::RefCell::new(String::new()));
+    let filename = Rc::new(RefCell::new(String::new()));
 
     let oninput = {
         let filename = filename.clone();
-        move |e: InputEvent| {
-            e.target_dyn_into::<HtmlInputElement>()
+        move |e: InputEvent| e.target_dyn_into::<HtmlInputElement>()
                 .map(|elem| *filename.borrow_mut() = elem.value())
                 .unwrap_or_default()
-        }
     };
 
-    let onclickok = {
-        let finished = prop.finished.clone();
-        let name = filename.clone();
-        let directory = prop.directory.clone();
+    let onclick = |e: MouseEvent| e.stop_immediate_propagation();
 
-        move |_| {
-            let name = name.clone();
-            let finished = finished.clone();
-            let directory = directory.clone();
-            spawn_local(async move {
-                let createme = directory.path().join(&*name.borrow()).into();
-                let args = to_value(&PitouArg{ pitou: &createme }).unwrap();
-                invoke("createdir", args).await;
-                finished.emit(());
-            });
-        }
+    let onclickok = {
+        let onclickok = prop.onclickok.clone();
+        let filename = filename.clone();
+        move |_| onclickok.emit(filename.clone())
     };
 
     let onclickcancel = {
-        let finished = prop.finished.clone();
-        move |_| finished.emit(())
+        let onclickcancel = prop.onclickcancel.clone();
+        move |_| onclickcancel.emit(())
+    };
+
+    let onkeypress = {
+        let onclickok = prop.onclickok.clone();
+        let filename = filename.clone();
+        move |e: KeyboardEvent| if e.key_code() == 13 { onclickok.emit(filename.clone()) }
     };
 
     let placeholder = "Enter Directory name...".to_owned();
@@ -77,16 +72,16 @@ pub fn NewDirPopUp(prop: &NewDirPopUpProps) -> Html {
     "};
 
     html! {
-        <div {style} class = {"popup"}>
+        <div {style} class = {"popup"} {onclick}>
             <p>{ oldname }</p>
-            <input type="text" {oninput} {placeholder}/>
+            <input type="text" {oninput} {placeholder} {onkeypress} />
             <div>
                 <input type="checkbox"/>
                 <span>{ "Override Existing" }</span>
             </div>
             <div style = {buttons_style}>
-                <button onclick={onclickok} style = {button1_style}>{ "OK" }</button>
                 <button onclick={onclickcancel} style = {button2_style}>{ "Cancel" }</button>
+                <button onclick={onclickok} style = {button1_style}>{ "OK" }</button>
             </div>
         </div>
     }

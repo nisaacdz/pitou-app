@@ -21,6 +21,12 @@ pub(crate) struct ItemsArg<'a> {
 }
 
 #[derive(Serialize)]
+pub(crate) struct PitouAndNameArgs<'a> {
+    pitou: &'a Pitou,
+    name: &'a String,
+}
+
+#[derive(Serialize)]
 pub(crate) struct PitouNoArg;
 
 mod components;

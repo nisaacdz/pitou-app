@@ -1,22 +1,21 @@
 use crate::{
-    app::{invoke, DirIcon, FileIcon, LoadingIcon, PitouArg, SymLinkIcon, Theme},
+    app::{DirIcon, FileIcon, LoadingIcon, SymLinkIcon, Theme, invoke, PitouArg},
     background_color,
 };
 use backend::{DateTime, Metadata, Pitou, PitouType};
-use serde_wasm_bindgen::{from_value, to_value};
+use serde_wasm_bindgen::{to_value, from_value};
 use wasm_bindgen_futures::spawn_local;
-// use gloo::console::log;
 use yew::prelude::*;
 
 #[derive(Properties, PartialEq)]
 pub struct RowProps {
     pub(super) pitou: Pitou,
-    pub(super) selected: bool,
     pub(super) theme: Theme,
     pub(super) idx: usize,
     pub(super) toggleselect: Callback<usize>,
     pub(super) updatedirectory: Callback<Pitou>,
 }
+
 
 impl RowProps {
     fn pitou(&self) -> &Pitou {
@@ -28,10 +27,24 @@ impl RowProps {
     }
 }
 
+
 #[function_component]
 pub fn Row(prop: &RowProps) -> Html {
     let metadata = use_state(|| None);
+
+    {
+        let metadata = metadata.clone();
+        let pitou = prop.pitou.clone();
+
+        spawn_local(async move {
+            let arg = to_value(&PitouArg { pitou: &pitou }).unwrap();
+            let val = from_value::<Option<Metadata>>(invoke("metadata", arg).await).unwrap();
+            metadata.set(val)        
+        });
+    }
+    
     let is_hovered = use_state_eq(|| false);
+    let is_selected = use_state_eq(|| false);
 
     let onmouseover = {
         let is_hovered = is_hovered.clone();
@@ -51,40 +64,27 @@ pub fn Row(prop: &RowProps) -> Html {
     };
 
     let toggleselect = {
+        let is_selected = is_selected.clone();
         let func = prop.toggleselect.clone();
         let idx = prop.idx;
 
-        move |_| func.emit(idx)
+        move |_| {
+            func.emit(idx);
+            is_selected.set(!*is_selected);
+        }
     };
-
-    {
-        let pitou = prop.pitou().clone();
-        let metadata = metadata.clone();
-
-        use_effect_with_deps(
-            |_| {
-                spawn_local(async move {
-                    let arg = PitouArg { pitou: &pitou };
-                    let arg = to_value(&arg).unwrap();
-                    let res = invoke("metadata", arg).await;
-                    let res = from_value::<Metadata>(res).unwrap();
-                    metadata.set(Some(res));
-                });
-            },
-            (),
-        );
-    }
 
     let hover_background = prop.theme().background1();
 
     let style = format! {"
-        display: flex;
-        flex-direction: row;
-        gap: 0;
-        height: 10%;
-        width: 100%;
-        flex-shrink: 0;
-        {}", background_color!(prop.selected || *is_hovered, hover_background) };
+    display: flex;
+    flex-direction: row;
+    gap: 0;
+    font-size: 90%;
+    height: 10%;
+    width: 100%;
+    flex-shrink: 0;
+    {}", background_color!(*is_selected || *is_hovered, hover_background) };
 
     let pitou = prop.pitou();
     let theme = prop.theme();
@@ -115,7 +115,7 @@ pub fn Row(prop: &RowProps) -> Html {
 
     html! {
         <div {style} {onmouseover} {onmouseout} {onclick}>
-            <CheckBox ontoggle = {toggleselect} ischecked = { prop.selected } />
+            <CheckBox ontoggle = {toggleselect} ischecked = { *is_selected } />
             <FileIconCmp {filetype} {theme} />
             <FileName pitou = { pitou.clone() } {theme} {updatedirectory} />
             <FileTypeCmp {filetype} {theme} />
@@ -151,6 +151,7 @@ pub fn CheckBox(prop: &CheckBoxProps) -> Html {
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
     width: 5%;
     height: 100%;
     "};
@@ -168,6 +169,7 @@ fn FileIconCmp(prop: &FileTypeProps) -> Html {
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
     width: 5%;
     height: 100%;"};
 
@@ -202,6 +204,7 @@ fn FileName(prop: &FileNameProps) -> Html {
     padding-left: 2%;
     width: 45%;
     height: 100%;
+    flex-shrink: 0;
     color: {foreground};"};
 
     let ondblclick = {
@@ -241,7 +244,6 @@ fn FileTypeCmp(prop: &FileTypeProps) -> Html {
         prop.filetype.map(|v| v.to_string()).unwrap_or_default()
     );
 
-    //TODO
     html! {
         <div {style}>{ res }</div>
     }
@@ -262,6 +264,7 @@ fn LastModifiedCmp(prop: &LastModifiedProps) -> Html {
     justify-content: center;
     width: 25%;
     height: 100%;
+    flex-shrink: 0;
     color: {foreground};" };
 
     let date = prop.lastmodified.map(|v| v.format()).unwrap_or_default();

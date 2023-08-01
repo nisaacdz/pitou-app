@@ -10,19 +10,9 @@ use self::clipboard::Item;
 use super::Pitou;
 
 impl Pitou {
-    pub async fn delete(items: Vec<Self>) -> io::Result<()> {
-        let handle = tokio::spawn(async move { fs_extra::remove_items(&items) });
-        handle.await.unwrap().unwrap();
+    pub fn delete(items: Vec<Self>) -> io::Result<()> {
+        trash::delete_all(items).unwrap();
         Ok(())
-    }
-
-    pub async fn new_folder(directory: Self, name: String) {
-        let newpath = directory
-            .path()
-            .parent()
-            .unwrap_or(&PathBuf::new())
-            .join(name);
-        tokio::fs::File::create(newpath).await.unwrap();
     }
 
     pub fn copy(items: Vec<Self>) {

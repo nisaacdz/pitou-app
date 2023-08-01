@@ -5,12 +5,12 @@ mod space;
 use backend::Pitou;
 use dsc::*;
 // use gloo::console::log;
-use crate::app::{invoke, LoadingDisplay, PitouArg, Theme};
+use crate::app::{LoadingDisplay, Theme};
 use rows::*;
-use serde_wasm_bindgen::{from_value, to_value};
 use space::*;
-use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
+
+use std::{rc::Rc, cell::RefCell};
 
 macro_rules! do_nothing {
     () => {
@@ -18,132 +18,75 @@ macro_rules! do_nothing {
     };
 }
 
+#[derive(PartialEq, Clone)]
+pub struct Selected {
+    selected: Rc<RefCell<(Vec<bool>, usize)>>,
+}
+
+impl Selected {
+    fn new(len: usize) -> Self {
+        let selected = Rc::new(RefCell::new((vec![false; len], 0)));
+
+        Self { selected }
+    }
+
+    fn toggle(&self, idx: usize) {
+        let mut borrow = self.selected.borrow_mut();
+        borrow.0[idx] = !borrow.0[idx];
+        if borrow.0[idx] { borrow.1 += 1 } else { borrow.1 -= 1 }
+    }
+
+    pub fn all_checked(&self) -> bool {
+        let borrow = self.selected.borrow();
+        borrow.1 == borrow.0.len()
+    }
+
+    fn toggle_all(&self) {
+        let mut borrow = self.selected.borrow_mut();
+        if borrow.1 == borrow.0.len() {
+            borrow.0.iter_mut().for_each(|v| *v = false);
+            borrow.1 = 0;
+        } else {
+            borrow.0.iter_mut().for_each(|v| *v = true);
+            borrow.1 = borrow.0.len();
+        }
+    }
+
+    fn idx(&self, idx: usize) -> bool {
+        self.selected.borrow().0[idx]
+    }
+}
+
 #[derive(PartialEq, Properties)]
 pub struct MainPaneProps {
-    pub pitou: Option<Pitou>,
+    pub children: Option<Vec<Pitou>>,
     pub theme: Theme,
     pub updatedirectory: Callback<Pitou>,
 }
 
-#[derive(Clone)]
-struct MainPaneState {
-    children: Vec<Pitou>,
-    selected: Vec<bool>,
-    len_selected: usize,
-}
-
-impl MainPaneState {
-    fn new(children: Vec<Pitou>) -> Self {
-        let selected = vec![false; children.len()];
-        let len_selected = 0;
-
-        Self {
-            children,
-            selected,
-            len_selected,
-        }
-    }
-
-    fn len(&self) -> usize {
-        self.children.len()
-    }
-
-    fn children(&self) -> &Vec<Pitou> {
-        &self.children
-    }
-
-    fn pitou(&self, idx: usize) -> Pitou {
-        self.children()[idx].clone()
-    }
-
-    fn toggle(&mut self, idx: usize) {
-        self.selected[idx] = !self.selected[idx];
-        if self.selected[idx] {
-            self.len_selected += 1;
-        } else {
-            self.len_selected -= 1;
-        }
-    }
-
-    fn selected(&self, idx: usize) -> bool {
-        self.selected[idx]
-    }
-
-    fn toggle_all(&mut self) {
-        if self.len_selected == self.selected.len() {
-            self.selected.iter_mut().for_each(|f| *f = false);
-            self.len_selected = 0;
-        } else {
-            self.selected.iter_mut().for_each(|f| *f = true);
-            self.len_selected = self.selected.len();
-        }
-    }
-
-    fn all_checked(&self) -> bool {
-        self.len_selected == self.selected.len()
-    }
-}
-
 #[function_component]
 pub fn MainPane(prop: &MainPaneProps) -> Html {
-    let children: UseStateHandle<Option<MainPaneState>> = use_state(|| None);
-
-    {
-        let children = children.clone();
-        let directory = prop.pitou.clone();
-
-        spawn_local(async move {
-            if let Some(directory) = &directory {
-                let arg = to_value(&PitouArg { pitou: &directory }).unwrap();
-                let val = invoke("children", arg).await;
-                let values = from_value::<Vec<Pitou>>(val)
-                    .expect("couldn't convert output to a vec of pitou's");
-
-                let new_state = MainPaneState::new(values);
-
-                match (*children).as_ref() {
-                    Some(old_state) => {
-                        if new_state.children() != old_state.children() {
-                            crate::data::reset_selected();
-                            children.set(Some(new_state));
-                        }
-                    }
-                    None => children.set(Some(new_state)),
-                }
-            }
-        })
-    }
+    let selected = prop.children.as_ref().map(|children| Selected::new(children.len()));
 
     let onclick = { move |_| do_nothing!() };
 
     let toggleselect = {
-        let children = children.clone();
-
+        let selected = selected.clone();
+        let children = prop.children.clone();
         move |idx| {
-            let mut new_state = (&*children).clone();
-            new_state.as_mut().map(|v| v.toggle(idx));
-            crate::data::update_selected(new_state.as_ref().map(|v| {
-                v.children()
-                    .iter()
-                    .enumerate()
-                    .filter(|&(idx, _)| v.selected(idx))
-                    .map(|(_, pitou)| pitou.clone())
-            }));
-            children.set(new_state)
+            selected.as_ref().map(|selected| selected.toggle(idx)).unwrap_or_default();
+            crate::data::update_selected(
+                children.as_ref().map(|children|
+                children.iter()
+                .enumerate()
+                .filter(|(idx, _)| selected.as_ref().map(|s| s.idx(*idx)).unwrap_or(false))
+                .map(|(_, v)| v.clone())));
         }
     };
 
     let toggleselectall = {
-        let children = children.clone();
-
-        move |_| match &*children {
-            Some(inner) => {
-                let mut inner = inner.clone();
-                inner.toggle_all();
-                children.set(Some(inner));
-            }
-            None => do_nothing!(),
-        }
+        let selected = selected.clone();
+        move |_| selected.as_ref().map(|selected| selected.toggle_all()).unwrap_or_default()
     };
 
     let theme = prop.theme;
@@ -174,27 +117,23 @@ pub fn MainPane(prop: &MainPaneProps) -> Html {
     width: 100%;
     "};
 
-    let checked = (&*children)
-        .as_ref()
-        .map(|val| val.all_checked())
-        .unwrap_or_default();
-
-    let content = if let Some(state) = &*children {
-        let entries = (0..state.len()).map(|idx| (idx, state.pitou(idx), prop.updatedirectory.clone(), state.selected(idx), toggleselect.clone())).map(|(idx, pitou, updatedirectory, selected, toggleselect)| html! { <Row {idx} {selected} {pitou} {theme} {toggleselect} {updatedirectory} /> }).collect::<Html>();
-
-        html! {
+    let content = prop.children.as_ref()
+    .map(|children| 
+        children.iter()
+        .enumerate()
+        .map(|(idx, pitou)| 
+            (idx, pitou.clone(), prop.updatedirectory.clone(), toggleselect.clone()))
+        .map(|(idx, pitou, updatedirectory, toggleselect)| html! { <Row {idx} {pitou} {theme} {toggleselect} {updatedirectory} /> })
+        .collect::<Html>()).map(|entries| html! {
             <div style = {inner_style}>
                     { entries }
                 <FreeArea />
             </div>
-        }
-    } else {
-        html! { <LoadingScreen /> }
-    };
+        }).unwrap_or(html! { <LoadingScreen /> });
 
     html! {
         <div {style} {onclick}>
-        <RowDescriptor {toggleselectall} {checked} {theme}/>
+        <RowDescriptor {toggleselectall} {selected} {theme}/>
             { content }
         </div>
     }

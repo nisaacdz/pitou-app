@@ -1,8 +1,11 @@
+use std::cell::RefCell;
+
 use serde_wasm_bindgen::{from_value, to_value};
 use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
 
-use crate::app::{invoke, PitouNoArg};
+use crate::app::{invoke, PitouArg, PitouNoArg};
+use backend::Pitou;
 
 use super::{cview::*, Theme};
 
@@ -13,23 +16,19 @@ pub struct ContentViewProps {
 
 #[function_component]
 pub fn ContentView(prop: &ContentViewProps) -> Html {
-    let toggle = use_state(|| false);
     let directory = use_state(|| None);
-
-    use_effect_with_deps(|directory| {
-        crate::data::update_directory((**directory).clone());
-    }, directory.clone());
-
-    let updateui = move |_| toggle.set(false);
+    let children = use_state(|| RefCell::new(None));
 
     {
         let directory = directory.clone();
+        let children = children.clone();
         let arg = to_value(&PitouNoArg).unwrap();
         use_effect_with_deps(
             |_| {
                 spawn_local(async move {
                     let js_val = invoke("get_debug_file", arg).await;
-                    let res = from_value::<backend::Pitou>(js_val).unwrap();
+                    let res = from_value::<Pitou>(js_val).unwrap();
+                    update_children(&res, &*children).await;
                     directory.set(Some(res))
                 });
             },
@@ -37,9 +36,36 @@ pub fn ContentView(prop: &ContentViewProps) -> Html {
         );
     }
 
-    let updatedirectory = {
+    async fn update_children(pitou: &Pitou, children: &RefCell<Option<Vec<Pitou>>>) {
+        crate::data::update_directory(Some(pitou.clone()));
+        let arg = to_value(&PitouArg { pitou }).unwrap();
+        let res = from_value::<Vec<Pitou>>(invoke("children", arg).await).unwrap();
+        children.borrow_mut().replace(res);
+    }
+
+    let updatedirectory = Callback::from({
         let directory = directory.clone();
-        move |new_dir| directory.set(Some(new_dir))
+        let children = children.clone();
+
+        move |new_dir: Pitou| {
+            let children = children.clone();
+            let directory = directory.clone();
+            spawn_local(async move {
+                update_children(&new_dir, &*children).await;
+                directory.set(Some(new_dir))
+            });
+        }
+    });
+
+    let updateui = {
+        let directory = directory.clone();
+        let updatedirectory = updatedirectory.clone();
+        move |_| {
+            gloo::console::log!("ui updated or refreshed");
+            if let Some(new_dir) = &*directory {
+                updatedirectory.emit(new_dir.clone())
+            }
+        }
     };
 
     let theme = prop.theme;
@@ -64,7 +90,7 @@ pub fn ContentView(prop: &ContentViewProps) -> Html {
 
             <SidePane pitou = { (&*directory).clone() } {theme} updatedirectory = { updatedirectory.clone() } />
 
-            <MainPane pitou = { (&*directory).clone() } {theme} {updatedirectory} />
+            <MainPane {theme} {updatedirectory} children = {(*children.borrow()).clone()}/>
         </div>
     }
 }

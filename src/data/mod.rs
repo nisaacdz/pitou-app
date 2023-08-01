@@ -4,9 +4,21 @@ static mut SELECTED: Option<Vec<Pitou>> = None;
 static mut DIRECTORY: Option<Pitou> = None;
 static mut PARENT_DIR: Option<Pitou> = None;
 
+pub fn screen_size() -> (usize, usize) {
+    
+    todo!()
+}
+
 pub fn update_selected<I: Iterator<Item = Pitou>>(newval: Option<I>) {
     let newval = match newval {
-        Some(v) => Some(v.collect()),
+        Some(v) => {
+            let res = v.collect::<Vec<_>>();
+            if res.len() == 0 {
+                None
+            } else {
+                Some(res)
+            }
+        }
         None => None,
     };
 

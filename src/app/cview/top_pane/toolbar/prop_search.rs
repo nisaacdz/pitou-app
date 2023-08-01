@@ -18,10 +18,11 @@ pub fn PropertiesButton(prop: &TopButtonProps) -> Html {
     };
 
     let style = format! {"
-    width: 3%;
+    width: 50px;
     height: 100%;
     display: flex;
     flex-direction: column;
+    flex-shrink: 0;
     align-items: center;
     "};
 
@@ -59,19 +60,20 @@ pub fn SearchButton(prop: &TopButtonProps) -> Html {
     };
 
     let style = format! {"
-    width: 3%;
+    width: 50px;
     height: 100%;
     display: flex;
     flex-direction: column;
+    flex-shrink: 0;
     align-items: center;
     "};
 
     let icon_style = format! {"
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        height: 70%;
-        width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 70%;
+    width: 100%;
     "};
 
     html! {

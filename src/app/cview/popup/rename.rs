@@ -1,24 +1,20 @@
+use std::{rc::Rc, cell::RefCell};
+
 use backend::Pitou;
-use serde_wasm_bindgen::to_value;
-use wasm_bindgen_futures::spawn_local;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
-use crate::app::{invoke, Theme};
-use serde::Serialize;
+use crate::app::Theme;
 
 #[derive(PartialEq, Properties)]
 pub struct RenamePopUpProps {
     pub file: Pitou,
     pub theme: Theme,
-    pub finished: Callback<()>,
+    pub onclickok: Callback<Rc<RefCell<String>>>,
+    pub onclickcancel: Callback<()>,
 }
 
-#[derive(Serialize)]
-struct RenameArg<'a> {
-    pitou: &'a Pitou,
-    name: &'a String,
-}
+
 
 #[function_component]
 pub fn RenamePopUp(prop: &RenamePopUpProps) -> Html {
@@ -33,7 +29,20 @@ pub fn RenamePopUp(prop: &RenamePopUpProps) -> Html {
     let current_name = prop.file.name();
     let oldname = format! {"current name: {current_name}"};
 
+    let onclick = |e: MouseEvent| e.stop_immediate_propagation();
+
     let newname = std::rc::Rc::new(std::cell::RefCell::new(String::new()));
+
+    let onclickok = {
+        let onclickok = prop.onclickok.clone();
+        let newname = newname.clone();
+        move |_| onclickok.emit(newname.clone())
+    };
+
+    let onclickcancel = {
+        let onclickcancel = prop.onclickcancel.clone();
+        move |_| onclickcancel.emit(())
+    };
 
     let oninput = {
         let newname = newname.clone();
@@ -44,30 +53,10 @@ pub fn RenamePopUp(prop: &RenamePopUpProps) -> Html {
         }
     };
 
-    let onclickok = {
-        let finished = prop.finished.clone();
-        let name = newname.clone();
-        let file = prop.file.clone();
-
-        move |_| {
-            let name = name.clone();
-            let finished = finished.clone();
-            let file = file.clone();
-            spawn_local(async move {
-                let args = to_value(&RenameArg {
-                    pitou: &file,
-                    name: &name.borrow_mut(),
-                })
-                .unwrap();
-                invoke("rename", args).await;
-                finished.emit(());
-            });
-        }
-    };
-
-    let onclickcancel = {
-        let finished = prop.finished.clone();
-        move |_| finished.emit(())
+    let onkeypress = {
+        let onclickok = prop.onclickok.clone();
+        let newname = newname.clone();
+        move |e: KeyboardEvent| if e.key_code() == 13 { onclickok.emit(newname.clone()) }
     };
 
     let placeholder = "Enter new name...".to_owned();
@@ -87,16 +76,16 @@ pub fn RenamePopUp(prop: &RenamePopUpProps) -> Html {
     "};
 
     html! {
-        <div {style} class = {"popup"}>
+        <div {style} class = {"popup"} {onclick}>
             <p>{ oldname }</p>
-            <input type="text" {oninput} {placeholder}/>
+            <input type="text" {oninput} {placeholder} {onkeypress} />
             <div>
                 <input type="checkbox"/>
                 <span>{ "Override Existing" }</span>
             </div>
             <div style = {buttons_style}>
-                <button onclick={onclickok} style = {button1_style}>{ "OK" }</button>
                 <button onclick={onclickcancel} style = {button2_style}>{ "Cancel" }</button>
+                <button onclick={onclickok} style = {button1_style}>{ "OK" }</button>
             </div>
         </div>
     }

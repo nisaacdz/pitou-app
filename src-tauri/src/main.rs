@@ -19,7 +19,8 @@ fn main() {
             rename,
             delete,
             createdir,
-            createfile
+            createfile,
+            clipboard,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

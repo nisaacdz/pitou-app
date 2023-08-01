@@ -1,5 +1,10 @@
-use crate::app::{invoke, ClipboardIcon, CopyIcon, CutIcon, ItemsArg, PasteIcon, PitouArg, Theme};
-use serde_wasm_bindgen::to_value;
+use std::collections::LinkedList;
+
+use crate::app::{
+    invoke, ClipboardIcon, CopyIcon, CutIcon, ItemsArg, PasteIcon, PitouArg, PitouNoArg, Theme,
+};
+use backend::Pitou;
+use serde_wasm_bindgen::{from_value, to_value};
 use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
 
@@ -29,19 +34,20 @@ pub fn PasteButton(prop: &PasteButtonProps) -> Html {
     };
 
     let style = format! {"
-    width: 3%;
+    width: 50px;
     height: 100%;
     display: flex;
     flex-direction: column;
+    flex-shrink: 0;
     align-items: center;
     "};
 
     let icon_style = format! {"
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        height: 70%;
-        width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 70%;
+    width: 100%;
     "};
 
     let theme = prop.theme;
@@ -70,19 +76,20 @@ pub fn CopyButton(prop: &TopButtonProps) -> Html {
     };
 
     let style = format! {"
-    width: 3%;
+    width: 50px;
     height: 100%;
     display: flex;
     flex-direction: column;
+    flex-shrink: 0;
     align-items: center;
     "};
 
     let icon_style = format! {"
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        height: 70%;
-        width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 70%;
+    width: 100%;
     "};
 
     let theme = prop.theme;
@@ -112,19 +119,20 @@ pub fn CutButton(prop: &TopButtonProps) -> Html {
     };
 
     let style = format! {"
-    width: 3%;
+    width: 50px;
     height: 100%;
     display: flex;
     flex-direction: column;
+    flex-shrink: 0;
     align-items: center;
     "};
 
     let icon_style = format! {"
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        height: 70%;
-        width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 70%;
+    width: 100%;
     "};
 
     let theme = prop.theme;
@@ -142,11 +150,30 @@ pub fn CutButton(prop: &TopButtonProps) -> Html {
 
 #[function_component]
 pub fn ClipboardButton(prop: &TopButtonProps) -> Html {
+    let clipboard = use_state(|| None);
+
+    let onclick = {
+        let clipboard = clipboard.clone();
+
+        move |_| {
+            let clipboard = clipboard.clone();
+            spawn_local(async move {
+                if let None = &*clipboard {
+                    let arg = to_value(&PitouNoArg {}).unwrap();
+                    let res = invoke("clipboard", arg).await;
+                    let items = from_value::<LinkedList<Vec<Pitou>>>(res).unwrap();
+                    clipboard.set(Some(items));
+                }
+            });
+        }
+    };
+
     let style = format! {"
-    width: 3%;
+    width: 50px;
     height: 100%;
     display: flex;
     flex-direction: column;
+    flex-shrink: 0;
     align-items: center;
     "};
 
@@ -161,7 +188,7 @@ pub fn ClipboardButton(prop: &TopButtonProps) -> Html {
     let theme = prop.theme;
 
     html! {
-        <div {style}>
+        <div {style} {onclick}>
             <div class = "card" style = {icon_style}>
                 <ClipboardIcon />
 

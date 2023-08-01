@@ -1,12 +1,7 @@
 use backend::Pitou;
-use serde_wasm_bindgen::{from_value, to_value};
-use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
 
-use crate::{
-    app::{invoke, PitouArg, Theme},
-    /*brightness*/ color,
-};
+use crate::{app::Theme, color};
 
 #[derive(PartialEq, Properties)]
 pub struct AncestorsTabsProps {
@@ -17,35 +12,6 @@ pub struct AncestorsTabsProps {
 
 #[function_component]
 pub(super) fn AncestorsTabs(prop: &AncestorsTabsProps) -> Html {
-    let directory = use_state(|| prop.pitou.clone());
-    let ancestors = use_state(|| None);
-    let clicked = use_state(|| false);
-
-    {
-        let ancestors = ancestors.clone();
-
-        use_effect_with_deps(
-            |directory| {
-                let directory = directory.clone();
-
-                spawn_local(async move {
-                    if let Some(directory) = &*directory {
-                        let args = to_value(&PitouArg { pitou: &*directory }).unwrap();
-                        let js_res = invoke("ancestors", args).await;
-                        let res = from_value::<Vec<Pitou>>(js_res).unwrap();
-                        ancestors.set(Some(res));
-                        clicked.set(false);
-                    }
-                });
-            },
-            directory.clone(),
-        );
-    }
-
-    if &prop.pitou != &*directory {
-        directory.set(prop.pitou.clone())
-    }
-
     let theme = prop.theme;
 
     let foreground_color = theme.foreground1();
@@ -63,29 +29,28 @@ pub(super) fn AncestorsTabs(prop: &AncestorsTabsProps) -> Html {
     "};
 
     let inner_style = format! {"
-        top: 2px;
-        bottom: 2px;
-        padding-left: 4%;
-        color: {foreground_color};
-        position: absolute;
-
-        display: flex;
-        flex-direction: row-reverse;
-        align-items: center;
-        column-gap: 2px;
-        justify-content: left;
-        overflow: hidden;
+    top: 2px;
+    bottom: 2px;
+    padding-left: 4%;
+    color: {foreground_color};
+    position: absolute;
+    display: flex;
+    flex-direction: row-reverse;
+    align-items: center;
+    column-gap: 2px;
+    justify-content: left;
+    overflow: hidden;
     "};
 
-    let entries =
-        if let Some(v) = &*ancestors {
-            v.iter()
-        .map(|p| (p.clone(), prop.updatedirectory.clone()))
+    let entries = prop
+        .pitou
+        .as_ref()
+        .map(|pitou| {
+            pitou.ancestors().into_iter().map(|pitou| (pitou, prop.updatedirectory.clone()))
         .map(|(pitou, updatedirectory)| html! { <Ancestor {pitou} {theme} {updatedirectory} /> })
         .collect::<Html>()
-        } else {
-            html! {}
-        };
+        })
+        .unwrap_or(html! {});
 
     html! {
         <div style = {outer_style}>

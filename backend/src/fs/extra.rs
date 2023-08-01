@@ -1,5 +1,5 @@
 use super::Drive;
-use crate::{DateTime, Filter, Metadata, Pitou, Properties, Sort, WithMetadata};
+use crate::{DateTime, Filter, Metadata, Pitou, Properties, Sort};
 use std::{io, path::PathBuf, time::SystemTime};
 use sysinfo::{System, SystemExt};
 use tokio::fs;
@@ -79,14 +79,6 @@ impl Pitou {
         Ok(metadata.into())
     }
 
-    pub async fn with_metadata(self) -> io::Result<WithMetadata> {
-        let metadata = self.metadata().await?;
-        Ok(WithMetadata {
-            pitou: self,
-            metadata,
-        })
-    }
-
     pub async fn refresh(&self) -> io::Result<Metadata> {
         self.metadata().await
     }
@@ -148,16 +140,6 @@ impl Pitou {
         })
     }
 
-    pub async fn ancestors(&self) -> Vec<Pitou> {
-        if self.path().as_os_str().len() == 0 {
-            return vec![PathBuf::from("").into()];
-        }
-        self.path()
-            .ancestors()
-            .map(|a| a.into())
-            .chain(Some(PathBuf::from("").into()))
-            .collect()
-    }
 }
 
 pub async fn debug_with_real_dir() -> Pitou {
