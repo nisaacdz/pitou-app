@@ -1,4 +1,4 @@
-use std::{rc::Rc, cell::RefCell};
+use std::{cell::RefCell, rc::Rc};
 
 use backend::Pitou;
 use web_sys::HtmlInputElement;
@@ -9,17 +9,16 @@ use crate::app::Theme;
 #[derive(PartialEq, Properties)]
 pub struct RenamePopUpProps {
     pub file: Pitou,
-    pub theme: Theme,
     pub onclickok: Callback<Rc<RefCell<String>>>,
     pub onclickcancel: Callback<()>,
 }
 
-
-
 #[function_component]
 pub fn RenamePopUp(prop: &RenamePopUpProps) -> Html {
-    let border_color = prop.theme.spare();
-    let background_color = prop.theme.background2();
+    let theme = use_context::<Theme>().unwrap();
+
+    let border_color = theme.spare();
+    let background_color = theme.background2();
 
     let style = format! {"
     background-color: {background_color};
@@ -56,7 +55,11 @@ pub fn RenamePopUp(prop: &RenamePopUpProps) -> Html {
     let onkeypress = {
         let onclickok = prop.onclickok.clone();
         let newname = newname.clone();
-        move |e: KeyboardEvent| if e.key_code() == 13 { onclickok.emit(newname.clone()) }
+        move |e: KeyboardEvent| {
+            if e.key_code() == 13 {
+                onclickok.emit(newname.clone())
+            }
+        }
     };
 
     let placeholder = "Enter new name...".to_owned();

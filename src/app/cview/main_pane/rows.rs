@@ -1,48 +1,51 @@
 use crate::{
-    app::{DirIcon, FileIcon, LoadingIcon, SymLinkIcon, Theme, invoke, PitouArg},
+    app::{invoke, DirIcon, FileIcon, LoadingIcon, PitouArg, SymLinkIcon, Theme},
     background_color,
 };
 use backend::{DateTime, Metadata, Pitou, PitouType};
-use serde_wasm_bindgen::{to_value, from_value};
+use serde_wasm_bindgen::{from_value, to_value};
 use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
 
 #[derive(Properties, PartialEq)]
 pub struct RowProps {
     pub(super) pitou: Pitou,
-    pub(super) theme: Theme,
     pub(super) idx: usize,
     pub(super) toggleselect: Callback<usize>,
     pub(super) updatedirectory: Callback<Pitou>,
 }
 
-
 impl RowProps {
     fn pitou(&self) -> &Pitou {
         &self.pitou
     }
-
-    fn theme(&self) -> Theme {
-        self.theme
-    }
 }
-
 
 #[function_component]
 pub fn Row(prop: &RowProps) -> Html {
+    let theme = use_context::<Theme>().unwrap();
+
     let metadata = use_state(|| None);
 
     {
         let metadata = metadata.clone();
         let pitou = prop.pitou.clone();
 
-        spawn_local(async move {
-            let arg = to_value(&PitouArg { pitou: &pitou }).unwrap();
-            let val = from_value::<Option<Metadata>>(invoke("metadata", arg).await).unwrap();
-            metadata.set(val)        
-        });
+        use_effect_with_deps(
+            move |_| {
+                let metadata = metadata.clone();
+                let pitou = pitou.clone();
+                spawn_local(async move {
+                    let arg = to_value(&PitouArg { pitou: &pitou }).unwrap();
+                    let val =
+                        from_value::<Option<Metadata>>(invoke("metadata", arg).await).unwrap();
+                    metadata.set(val)
+                })
+            },
+            (),
+        );
     }
-    
+
     let is_hovered = use_state_eq(|| false);
     let is_selected = use_state_eq(|| false);
 
@@ -74,7 +77,7 @@ pub fn Row(prop: &RowProps) -> Html {
         }
     };
 
-    let hover_background = prop.theme().background1();
+    let hover_background = theme.background1();
 
     let style = format! {"
     display: flex;
@@ -87,7 +90,6 @@ pub fn Row(prop: &RowProps) -> Html {
     {}", background_color!(*is_selected || *is_hovered, hover_background) };
 
     let pitou = prop.pitou();
-    let theme = prop.theme();
 
     let filetype = {
         if let Some(m) = &*metadata {
@@ -116,10 +118,10 @@ pub fn Row(prop: &RowProps) -> Html {
     html! {
         <div {style} {onmouseover} {onmouseout} {onclick}>
             <CheckBox ontoggle = {toggleselect} ischecked = { *is_selected } />
-            <FileIconCmp {filetype} {theme} />
-            <FileName pitou = { pitou.clone() } {theme} {updatedirectory} />
-            <FileTypeCmp {filetype} {theme} />
-            <LastModifiedCmp {lastmodified} {theme}/>
+            <FileIconCmp {filetype} />
+            <FileName pitou = { pitou.clone() } {updatedirectory} />
+            <FileTypeCmp {filetype} />
+            <LastModifiedCmp {lastmodified} />
         </div>
     }
 }
@@ -190,13 +192,14 @@ fn FileIconCmp(prop: &FileTypeProps) -> Html {
 #[derive(PartialEq, Properties)]
 pub struct FileNameProps {
     pub pitou: Pitou,
-    pub theme: Theme,
     pub updatedirectory: Callback<()>,
 }
 
 #[function_component]
 fn FileName(prop: &FileNameProps) -> Html {
-    let foreground = prop.theme.foreground1();
+    let theme = use_context::<Theme>().unwrap();
+
+    let foreground = theme.foreground1();
     let style = format! {"
     display: flex;
     align-items: center;
@@ -224,13 +227,14 @@ fn FileName(prop: &FileNameProps) -> Html {
 
 #[derive(PartialEq, Properties)]
 struct FileTypeProps {
-    pub theme: Theme,
     pub filetype: Option<PitouType>,
 }
 
 #[function_component]
 fn FileTypeCmp(prop: &FileTypeProps) -> Html {
-    let foreground = prop.theme.foreground1();
+    let theme = use_context::<Theme>().unwrap();
+
+    let foreground = theme.foreground1();
     let style = format! {"
     display: flex;
     align-items: center;
@@ -252,12 +256,13 @@ fn FileTypeCmp(prop: &FileTypeProps) -> Html {
 #[derive(PartialEq, Properties)]
 pub struct LastModifiedProps {
     lastmodified: Option<DateTime>,
-    theme: Theme,
 }
 
 #[function_component]
 fn LastModifiedCmp(prop: &LastModifiedProps) -> Html {
-    let foreground = prop.theme.foreground1();
+    let theme = use_context::<Theme>().unwrap();
+
+    let foreground = theme.foreground1();
     let style = format! {"
     display: flex;
     align-items: center;

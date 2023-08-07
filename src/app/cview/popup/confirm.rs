@@ -4,23 +4,21 @@ use crate::app::Theme;
 
 #[derive(PartialEq, Properties)]
 pub struct ConfirmProps {
-    pub theme: Theme,
     pub prompt: String,
     pub cancel: Callback<()>,
     pub confirm: Callback<()>,
 }
 
-
 #[function_component]
 pub fn Confirm(prop: &ConfirmProps) -> Html {
+    let theme = use_context::<Theme>().unwrap();
+
     let onclickcancel = {
         let cancel = prop.cancel.clone();
         move |_| cancel.emit(())
     };
 
     let onclick = move |e: MouseEvent| e.stop_immediate_propagation();
-
-    let theme = prop.theme;
 
     let background_color = theme.background2();
     let border_color = theme.spare();

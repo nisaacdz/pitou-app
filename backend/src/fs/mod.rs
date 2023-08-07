@@ -179,6 +179,12 @@ pub struct Properties {
     pub history: bool,
 }
 
+impl Properties {
+    pub fn path(&self) -> &PathBuf {
+        &self.path
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq)]
 pub struct DateTime {
     dt: SystemTime,

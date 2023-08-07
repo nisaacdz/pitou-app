@@ -1,4 +1,4 @@
-use std::{rc::Rc, cell::RefCell};
+use std::{cell::RefCell, rc::Rc};
 
 use backend::Pitou;
 use web_sys::HtmlInputElement;
@@ -9,15 +9,16 @@ use crate::app::Theme;
 #[derive(PartialEq, Properties)]
 pub struct NewDirPopUpProps {
     pub directory: Pitou,
-    pub theme: Theme,
     pub onclickcancel: Callback<()>,
     pub onclickok: Callback<Rc<RefCell<String>>>,
 }
 
 #[function_component]
 pub fn NewDirPopUp(prop: &NewDirPopUpProps) -> Html {
-    let border_color = prop.theme.spare();
-    let background_color = prop.theme.background2();
+    let theme = use_context::<Theme>().unwrap();
+
+    let border_color = theme.spare();
+    let background_color = theme.background2();
 
     let style = format! {"
     background-color: {background_color};
@@ -25,15 +26,17 @@ pub fn NewDirPopUp(prop: &NewDirPopUpProps) -> Html {
     "};
 
     let folder_name = prop.directory.name();
-    let oldname = format! {"Create new file in: {folder_name}"};
+    let oldname = format! {"Create new folder in: {folder_name}"};
 
     let filename = Rc::new(RefCell::new(String::new()));
 
     let oninput = {
         let filename = filename.clone();
-        move |e: InputEvent| e.target_dyn_into::<HtmlInputElement>()
+        move |e: InputEvent| {
+            e.target_dyn_into::<HtmlInputElement>()
                 .map(|elem| *filename.borrow_mut() = elem.value())
                 .unwrap_or_default()
+        }
     };
 
     let onclick = |e: MouseEvent| e.stop_immediate_propagation();
@@ -52,7 +55,11 @@ pub fn NewDirPopUp(prop: &NewDirPopUpProps) -> Html {
     let onkeypress = {
         let onclickok = prop.onclickok.clone();
         let filename = filename.clone();
-        move |e: KeyboardEvent| if e.key_code() == 13 { onclickok.emit(filename.clone()) }
+        move |e: KeyboardEvent| {
+            if e.key_code() == 13 {
+                onclickok.emit(filename.clone())
+            }
+        }
     };
 
     let placeholder = "Enter Directory name...".to_owned();

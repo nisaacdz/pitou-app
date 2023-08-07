@@ -10,21 +10,21 @@ pub use clicks::*;
 #[function_component]
 pub fn DirIcon() -> Html {
     html! {
-        <img src="./public/icons/main/opened_folder.png" alt="folder" />
+        <img src="./public/icons/main/opened_folder.png" alt="folder" width = "80%"/>
     }
 }
 
 #[function_component]
 pub fn FileIcon() -> Html {
     html! {
-        <img src="./public/icons/main/file.svg" alt="file" />
+        <img src="./public/icons/main/file.svg" alt="file" width = "80%"/>
     }
 }
 
 #[function_component]
 pub fn SymLinkIcon() -> Html {
     html! {
-        <img src="./public/icons/main/symlink.png" alt="symlink" />
+        <img src="./public/icons/main/symlink.png" alt="symlink" width = "80%"/>
     }
 }
 
@@ -64,25 +64,25 @@ pub fn ClipboardIcon() -> Html {
 }
 
 #[function_component]
-pub fn SettingsIcon(_prop: &ThemeProp) -> Html {
+pub fn SettingsIcon() -> Html {
     html! {
-        <img src="./public/icons/side/settings.png" alt="settings" />
+        <img src="./public/icons/side/settings.png" alt="settings" width = "80%"/>
     }
 }
 
 #[function_component]
-pub fn HomeIcon(_prop: &ThemeProp) -> Html {
+pub fn HomeIcon() -> Html {
     html! {
         html! {
-            <img src="./public/icons/side/home.png" alt="home" />
+            <img src="./public/icons/side/home.png" alt="home" width = "80%" />
         }
     }
 }
 
 #[function_component]
-pub fn BackIcon(_prop: &ThemeProp) -> Html {
+pub fn BackIcon() -> Html {
     html! {
-        <img src="./public/icons/side/back_arrow.png" alt="back" />
+        <img src="./public/icons/side/back_arrow.png" alt="back" width = "80%"/>
     }
 }
 
@@ -96,21 +96,21 @@ pub fn SearchIcon() -> Html {
 #[function_component]
 pub fn LockedIcon() -> Html {
     html! {
-        <img src="./public/icons/side/locked.png" alt="locked" />
+        <img src="./public/icons/side/locked.png" alt="locked" width = "80%"/>
     }
 }
 
 #[function_component]
 pub fn CloudIcon() -> Html {
     html! {
-        <img src="./public/icons/side/cloud_dir.png" alt="cloud" />
+        <img src="./public/icons/side/cloud_dir.png" alt="cloud" width = "80%"/>
     }
 }
 
 #[function_component]
 pub fn CloudStorageIcon() -> Html {
     html! {
-        <img src="./public/icons/side/cloud_dir.png" alt="cloud storage" />
+        <img src="./public/icons/side/cloud_dir.png" alt="cloud storage" width = "80%"/>
     }
 }
 
@@ -138,14 +138,14 @@ pub fn CopyIcon() -> Html {
 #[function_component]
 pub fn BookmarksIcon() -> Html {
     html! {
-        <img src="./public/icons/side/bookmark.png" alt="bookmarks" />
+        <img src="./public/icons/side/bookmark.png" alt="bookmarks" width = "80%"/>
     }
 }
 
 #[function_component]
-pub fn HistoryIcon(_prop: &ThemeProp) -> Html {
+pub fn HistoryIcon() -> Html {
     html! {
-        <img src="./public/icons/side/history.png" alt="history" />
+        <img src="./public/icons/side/history.png" alt="history" width = "80%"/>
     }
 }
 
@@ -169,7 +169,6 @@ pub fn DeleteIcon() -> Html {
         <img height = "100%" src="./public/icons/top/delete.png" alt="delete" />
     }
 }
-
 
 #[function_component]
 pub fn RenameIcon() -> Html {

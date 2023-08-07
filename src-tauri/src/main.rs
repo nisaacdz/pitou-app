@@ -21,6 +21,9 @@ fn main() {
             createdir,
             createfile,
             clipboard,
+            last_history_or_default,
+            append_history,
+            append_bookmarks,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

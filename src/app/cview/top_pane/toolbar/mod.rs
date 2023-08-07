@@ -1,5 +1,4 @@
 use crate::app::Theme;
-use backend::Pitou;
 use yew::prelude::*;
 
 mod new_items;
@@ -14,8 +13,6 @@ use prop_search::*;
 
 #[derive(PartialEq, Properties)]
 pub struct ToolBarProps {
-    pub theme: Theme,
-    pub updatedirectory: Callback<Pitou>,
     pub updateui: Callback<()>,
 }
 
@@ -34,21 +31,19 @@ pub(super) fn ToolBar(prop: &ToolBarProps) -> Html {
     font-size: 90%;"
     };
 
-    let theme = prop.theme;
-
     html! {
         <div {style}>
-        <ClipboardButton {theme} updateui = { prop.updateui.clone() }/>
-        <CopyButton {theme} updateui = { prop.updateui.clone() }/>
-        <CutButton  {theme} updateui = { prop.updateui.clone() }/>
-        <PasteButton {theme} updateui = { prop.updateui.clone() } />
-        <PropertiesButton {theme} updateui = { prop.updateui.clone() }/>
-        <SearchButton {theme} updateui = { prop.updateui.clone() }/>
-        <RenameButton {theme} updateui = { prop.updateui.clone() } />
-        <NewFolderButton {theme} updateui = { prop.updateui.clone() }/>
-        <NewFileButton {theme} updateui = { prop.updateui.clone() }/>
-        <DeleteButton {theme} updateui = { prop.updateui.clone() } />
-        <RefreshButton {theme} updateui = { prop.updateui.clone() }/>
+            <ClipboardButton updateui = { prop.updateui.clone() }/>
+            <CopyButton updateui = { prop.updateui.clone() }/>
+            <CutButton  updateui = { prop.updateui.clone() }/>
+            <PasteButton updateui = { prop.updateui.clone() } />
+            <PropertiesButton updateui = { prop.updateui.clone() }/>
+            <SearchButton updateui = { prop.updateui.clone() }/>
+            <RenameButton updateui = { prop.updateui.clone() } />
+            <NewFolderButton updateui = { prop.updateui.clone() }/>
+            <NewFileButton updateui = { prop.updateui.clone() }/>
+            <DeleteButton updateui = { prop.updateui.clone() } />
+            <RefreshButton updateui = { prop.updateui.clone() }/>
         </div>
     }
 }
@@ -56,7 +51,6 @@ pub(super) fn ToolBar(prop: &ToolBarProps) -> Html {
 #[derive(PartialEq, Properties)]
 pub struct NameFieldProp {
     pub name: String,
-    pub theme: Theme,
 }
 
 #[allow(unused)]
@@ -64,14 +58,13 @@ impl NameFieldProp {
     pub fn name(&self) -> &String {
         &self.name
     }
-    pub fn theme(&self) -> &Theme {
-        &self.theme
-    }
 }
 
 #[function_component]
 pub fn NameField(prop: &NameFieldProp) -> Html {
-    let foreground_color = prop.theme().foreground1();
+    let theme = use_context::<Theme>().unwrap();
+
+    let foreground_color = theme.foreground1();
     let style = format! {"
     height: 30%;
     display: flex;
@@ -90,6 +83,5 @@ pub fn NameField(prop: &NameFieldProp) -> Html {
 
 #[derive(PartialEq, Properties)]
 pub struct TopButtonProps {
-    theme: Theme,
     updateui: Callback<()>,
 }

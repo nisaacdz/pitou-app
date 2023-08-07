@@ -2,8 +2,6 @@ use backend::Pitou;
 use std::rc::Rc;
 use yew::Properties;
 
-use super::Theme;
-
 #[derive(Clone)]
 pub struct File {
     pitou: Rc<Pitou>,
@@ -38,15 +36,4 @@ impl std::ops::Deref for File {
 #[derive(Properties, Clone, PartialEq)]
 pub struct PitouProps {
     pub pitou: Pitou,
-    pub theme: Theme,
-}
-
-impl PitouProps {
-    pub fn _pitou(&self) -> &Pitou {
-        &self.pitou
-    }
-
-    pub fn theme(&self) -> Theme {
-        self.theme
-    }
 }

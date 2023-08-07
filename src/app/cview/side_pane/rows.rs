@@ -11,13 +11,13 @@ use crate::{
 #[derive(PartialEq, Properties)]
 pub struct SidePaneRowProps {
     pub pitou: Pitou,
-    pub theme: Theme,
     pub updatedirectory: Callback<Pitou>,
     pub selected: bool,
 }
 
 #[function_component]
 pub fn SidePaneRow(prop: &SidePaneRowProps) -> Html {
+    let theme = use_context::<Theme>().unwrap();
     let metadata = use_state(|| None);
     let hovered = use_state_eq(|| false);
 
@@ -54,8 +54,6 @@ pub fn SidePaneRow(prop: &SidePaneRowProps) -> Html {
         )
     }
 
-    let theme = prop.theme;
-
     let foreground_color = theme.foreground1();
 
     let style = format! {"
@@ -80,15 +78,14 @@ pub fn SidePaneRow(prop: &SidePaneRowProps) -> Html {
 
     html! {
         <div {style} {onmouseover} {onmouseout}>
-            <FileIconCmp {filetype} {theme} />
-            <SidePaneFileName pitou = { prop.pitou.clone() } {theme} updatedirectory = { prop.updatedirectory.clone() } />
+            <FileIconCmp {filetype} />
+            <SidePaneFileName pitou = { prop.pitou.clone() } updatedirectory = { prop.updatedirectory.clone() } />
         </div>
     }
 }
 
 #[derive(PartialEq, Properties)]
 struct FileTypeProps {
-    pub theme: Theme,
     pub filetype: Option<backend::PitouType>,
 }
 
@@ -120,7 +117,6 @@ fn FileIconCmp(prop: &FileTypeProps) -> Html {
 #[derive(PartialEq, Properties)]
 pub struct SidePaneFileNameProps {
     pitou: Pitou,
-    theme: Theme,
     updatedirectory: Callback<Pitou>,
 }
 

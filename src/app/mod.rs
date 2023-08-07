@@ -46,14 +46,17 @@ pub use view::*;
 #[function_component]
 pub fn App() -> Html {
     let settings = use_state(|| Settings::DEFAULT);
-    let theme = use_state(|| Theme::DEFAULT);
 
     html! {
-        match settings.view() {
-            AppView::Content => html! { <ContentView theme = {*theme} /> },
-            AppView::Opening => html! { <h1>{"Hello Opening View"}</h1> },
-            AppView::Settings => html! { <h1>{"Hello Settings"}</h1> },
+        <ContextProvider<Theme> context = { Theme::DEFAULT }>
+        {
+            match settings.view() {
+                AppView::Content => html! { <ContentView/> },
+                AppView::Opening => html! { <h1>{"Hello Opening View"}</h1> },
+                AppView::Settings => html! { <h1>{"Hello Settings"}</h1> },
+            }
         }
+        </ContextProvider<Theme>>
     }
 }
 

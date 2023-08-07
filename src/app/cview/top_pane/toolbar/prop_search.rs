@@ -4,7 +4,7 @@ use yew::prelude::*;
 use super::{NameField, TopButtonProps};
 
 #[function_component]
-pub fn PropertiesButton(prop: &TopButtonProps) -> Html {
+pub fn PropertiesButton(_prop: &TopButtonProps) -> Html {
     let mouse_over = use_state(|| false);
 
     let onmouseover = {
@@ -40,13 +40,13 @@ pub fn PropertiesButton(prop: &TopButtonProps) -> Html {
                 <DetailsIcon />
 
             </div>
-            <NameField name = { "info" }  theme = { prop.theme } />
+            <NameField name = { "info" }/>
         </div>
     }
 }
 
 #[function_component]
-pub fn SearchButton(prop: &TopButtonProps) -> Html {
+pub fn SearchButton(_prop: &TopButtonProps) -> Html {
     let mouse_over = use_state(|| false);
 
     let onmouseover = {
@@ -82,7 +82,7 @@ pub fn SearchButton(prop: &TopButtonProps) -> Html {
                 <SearchIcon />
 
             </div>
-            <NameField name = { "search" } theme = { prop.theme } />
+            <NameField name = { "search" }/>
         </div>
     }
 }

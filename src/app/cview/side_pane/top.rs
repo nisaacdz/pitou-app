@@ -5,8 +5,7 @@ use crate::app::{RefreshIcon, Theme};
 
 #[derive(PartialEq, Properties)]
 pub struct TopOfParentDirProps {
-    pub pitou: Option<Pitou>,
-    pub theme: Theme,
+    pub selected: Option<Pitou>,
 }
 
 #[function_component]
@@ -26,29 +25,25 @@ pub fn TopOfParentDir(prop: &TopOfParentDirProps) -> Html {
         justify-content: center;
     "};
 
-    let pitou = prop.pitou.clone();
-    let theme = prop.theme;
+    let name = prop.selected.as_ref().map(|directory| directory.name());
 
     html! {
         <div {style}>
-            <ParentDirName pitou = { pitou.clone() } {theme} />
-            <RefreshButton { pitou } {theme} />
+            <ParentDirName {name} />
+            <RefreshButton />
         </div>
     }
 }
 
-#[derive(Properties, PartialEq)]
-struct RefreshButtonProps {
-    pitou: Option<Pitou>,
-    theme: Theme,
-}
 
 #[function_component]
-fn RefreshButton(prop: &RefreshButtonProps) -> Html {
+fn RefreshButton() -> Html {
+    let theme = use_context::<Theme>().unwrap();
+
     let onclick = |_| println!("");
 
-    let spare_color = prop.theme.spare();
-    let background_color = prop.theme.background1();
+    let spare_color = theme.spare();
+    let background_color = theme.background1();
 
     let style = format! {"
         width: 10%;
@@ -64,28 +59,29 @@ fn RefreshButton(prop: &RefreshButtonProps) -> Html {
 
 #[derive(PartialEq, Properties)]
 struct ParentDirNameProps {
-    pitou: Option<Pitou>,
-    theme: Theme,
+    name: Option<String>,
 }
 
 #[function_component]
 fn ParentDirName(prop: &ParentDirNameProps) -> Html {
-    let spare_color = prop.theme.spare();
-    let background_color = prop.theme.background2();
+    let theme = use_context::<Theme>().unwrap();
+
+    let spare_color = theme.spare();
+    let background_color = theme.background2();
 
     let style = format! {"
-        display: flex;
-        flex-direction: row;
-        gap: 0;
-        height: calc(100% - 4px);
-        width: 75%;
-        padding-left: 5%;
-        padding-right: 5%;
-        border: 1px solid {spare_color};
-        background-color: {background_color};
+    display: flex;
+    flex-direction: row;
+    gap: 0;
+    height: calc(100% - 4px);
+    width: 75%;
+    padding-left: 5%;
+    padding-right: 5%;
+    border: 1px solid {spare_color};
+    background-color: {background_color};
     "};
 
-    let name = prop.pitou.as_ref().map(|p| p.name()).unwrap_or_default();
+    let name = prop.name.clone().unwrap_or_default();
 
     html! {
         <div {style}>

@@ -1,13 +1,15 @@
 use crate::app::{
     confirm::Confirm, cview::top_pane::toolbar::NameField, invoke, DeleteIcon, ItemsArg,
-    RefreshIcon, Theme,
+    RefreshIcon,
 };
 use serde_wasm_bindgen::to_value;
 use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
 
+use super::TopButtonProps;
+
 #[function_component]
-pub fn DeleteButton(prop: &RefreshButtonProps) -> Html {
+pub fn DeleteButton(prop: &TopButtonProps) -> Html {
     let items_to_delete = use_state(|| None);
 
     let onclick = {
@@ -43,8 +45,6 @@ pub fn DeleteButton(prop: &RefreshButtonProps) -> Html {
         move |_| items_to_delete.set(None)
     };
 
-    let theme = prop.theme;
-
     let prompt_or_not = if let Some(items) = &*items_to_delete {
         let first_item = items.first().map(|first| first.name()).unwrap_or_default();
         let others = if items.len() == 2 {
@@ -58,7 +58,7 @@ pub fn DeleteButton(prop: &RefreshButtonProps) -> Html {
         let prompt = format! {"Are you sure you want to delete '{first_item}'{others}?"};
 
         html! {
-            <Confirm {theme} {confirm} {cancel} {prompt}/>
+            <Confirm {confirm} {cancel} {prompt}/>
         }
     } else {
         html! {}
@@ -88,24 +88,16 @@ pub fn DeleteButton(prop: &RefreshButtonProps) -> Html {
                 <DeleteIcon />
 
             </div>
-            <NameField name = { "delete" }  { theme } />
+            <NameField name = { "delete" }/>
         </div>
     }
 }
 
-#[derive(PartialEq, Properties)]
-pub struct RefreshButtonProps {
-    pub theme: Theme,
-    pub updateui: Callback<()>,
-}
-
 #[function_component]
-pub fn RefreshButton(prop: &RefreshButtonProps) -> Html {
+pub fn RefreshButton(prop: &TopButtonProps) -> Html {
     let updateui = prop.updateui.clone();
 
     let onclick = move |_| updateui.emit(());
-
-    let theme = prop.theme;
 
     let style = format! {"
     width: 50px;
@@ -129,7 +121,7 @@ pub fn RefreshButton(prop: &RefreshButtonProps) -> Html {
             <div class = "card" style = {icon_style}>
                 <RefreshIcon />
             </div>
-            <NameField name = { "refresh" }  { theme } />
+            <NameField name = { "refresh" }/>
         </div>
     }
 }

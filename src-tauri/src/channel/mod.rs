@@ -22,6 +22,21 @@ pub async fn ancestors(pitou: backend::Pitou) -> Vec<backend::Pitou> {
 }
 
 #[tauri::command]
+pub async fn append_history(pitou: backend::Pitou) {
+    backend::history::append(&pitou).await
+}
+
+#[tauri::command]
+pub async fn last_history_or_default() -> backend::Pitou {
+    backend::history::last().await.unwrap_or(backend::Pitou::from(std::path::PathBuf::from("")))
+}
+
+#[tauri::command]
+pub async fn append_bookmarks(pitou: backend::Pitou) {
+    backend::bookmarks::append(&pitou).await
+}
+
+#[tauri::command]
 pub async fn children(pitou: backend::Pitou) -> Vec<backend::Pitou> {
     pitou
         .children()
@@ -51,8 +66,7 @@ pub(crate) fn paste(pitou: backend::Pitou) {
 
 #[tauri::command]
 pub(crate) fn delete(items: Vec<backend::Pitou>) {
-    backend::Pitou::delete(items)
-        .expect("failed to delete items");
+    backend::Pitou::delete(items).expect("failed to delete items");
 }
 
 #[tauri::command]

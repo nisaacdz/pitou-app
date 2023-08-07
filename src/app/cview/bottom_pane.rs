@@ -2,14 +2,11 @@ use yew::prelude::*;
 
 use crate::app::Theme;
 
-#[derive(PartialEq, Properties)]
-pub struct BottomPaneProps {
-    pub theme: Theme,
-}
-
 #[function_component]
-pub fn BottomPane(prop: &BottomPaneProps) -> Html {
-    let background_color = prop.theme.background1();
+pub fn BottomPane() -> Html {
+    let theme = use_context::<Theme>().unwrap();
+
+    let background_color = theme.background1();
     let style = format! {
     "right: 0%;
     height: 4%;

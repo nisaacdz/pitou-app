@@ -1,13 +1,2 @@
-0. Automatically refresh after paste, delete, newfile, newfolder and back
-1. Exclude onclick from ondblclick for rows so that ondblclick doesn't also fire onclick
-2. Stop propagating checked mark accross different opened directories
-3. Reset scrollbar when new directory is opened
-4. Implement info popup
-5. Implement refresh
-6. Implement Home
-7. Implement History
-8. Implement Bookmarks
-9. Implement right click popup on row
-10. Implement grid
-11. Implement Locked
-12. Implement Cloud
+1. Implement a way to request the os for permission to read and write to a cache (sqlite) less than 5kb.
+2. Select all checkbox doesn't select all

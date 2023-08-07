@@ -9,7 +9,6 @@ use backend::Pitou;
 #[derive(PartialEq, Properties)]
 struct LeftPaneMembersProps {
     pitou: Pitou,
-    theme: Theme,
     onclick: Callback<()>,
     onhover: Callback<()>,
 }
@@ -17,20 +16,18 @@ struct LeftPaneMembersProps {
 #[derive(PartialEq, Properties)]
 struct HoverNameProp {
     name: String,
-    theme: Theme,
 }
 
 impl HoverNameProp {
     fn name(&self) -> &String {
         &self.name
     }
-    fn theme(&self) -> &Theme {
-        &self.theme
-    }
 }
 
 #[function_component]
 fn HoverNameDisp(prop: &HoverNameProp) -> Html {
+    let theme = use_context::<Theme>().unwrap();
+
     let style = format! {"
         background-color: {};
         position: relative;
@@ -42,7 +39,7 @@ fn HoverNameDisp(prop: &HoverNameProp) -> Html {
         right: auto;
         top: 35%;
         height: 50%;
-        ", prop.theme().background1(), prop.theme().foreground1()
+        ", theme.background1(), theme.foreground1()
     };
 
     html! {
@@ -50,14 +47,9 @@ fn HoverNameDisp(prop: &HoverNameProp) -> Html {
     }
 }
 
-#[derive(Properties, PartialEq)]
-pub struct LeftPaneProps {
-    pub theme: Theme,
-}
-
 #[function_component]
-pub fn LeftPane(prop: &LeftPaneProps) -> Html {
-    let theme = prop.theme;
+pub fn LeftPane() -> Html {
+    let theme = use_context::<Theme>().unwrap();
     let background_color = theme.background1();
 
     let style = format! {"
@@ -75,43 +67,19 @@ pub fn LeftPane(prop: &LeftPaneProps) -> Html {
 
     html! {
         <div {style}>
-
-            <BackButton {theme}/>
-            <HomeButton {theme}/>
-            <HistoryButton {theme}/>
-            <BookmarksButton {theme}/>
-            <LockedButton  {theme}/>
-            <CloudButton {theme}/>
-            <SettingsButton {theme}/>
+            <BackButton />
+            <HomeButton />
+            <HistoryButton />
+            <BookmarksButton />
+            <LockedButton />
+            <CloudButton />
+            <SettingsButton />
         </div>
     }
 }
 
-#[derive(Properties, PartialEq)]
-pub struct ButtonProps {
-    pub theme: Theme,
-}
-
-impl ButtonProps {
-    fn theme(&self) -> Theme {
-        self.theme
-    }
-}
-
 #[function_component]
-pub fn BackButton(prop: &ButtonProps) -> Html {
-    let mouse_over = use_state(|| false);
-
-    let onmouseover = {
-        let mouse_over = mouse_over.clone();
-        move |_| mouse_over.set(true)
-    };
-
-    let onmouseout = {
-        let mouse_over = mouse_over.clone();
-        move |_| mouse_over.set(false)
-    };
-
+pub fn BackButton() -> Html {
     let style = format! {"
         position: relative;
         overflow-x: visible;
@@ -130,36 +98,16 @@ pub fn BackButton(prop: &ButtonProps) -> Html {
     "};
 
     html! {
-        <div {style} {onmouseover} {onmouseout}>
+        <div {style}>
             <div class = "card" style = {icon_style}>
-                <BackIcon theme = { prop.theme() }/>
-
+                <BackIcon />
             </div>
-            {
-                if *mouse_over {
-                    html! { <HoverNameDisp name = { "back" }  theme = { prop.theme() } /> }
-                } else {
-                    html! {}
-                }
-            }
         </div>
     }
 }
 
 #[function_component]
-pub fn HomeButton(prop: &ButtonProps) -> Html {
-    let mouse_over = use_state(|| false);
-
-    let onmouseover = {
-        let mouse_over = mouse_over.clone();
-        move |_| mouse_over.set(true)
-    };
-
-    let onmouseout = {
-        let mouse_over = mouse_over.clone();
-        move |_| mouse_over.set(false)
-    };
-
+pub fn HomeButton() -> Html {
     let style = format! {"
         position: relative;
         overflow-x: visible;
@@ -178,36 +126,16 @@ pub fn HomeButton(prop: &ButtonProps) -> Html {
     "};
 
     html! {
-        <div {style} {onmouseover} {onmouseout}>
+        <div {style}>
             <div class = "card" style = {icon_style}>
-                <HomeIcon theme = { prop.theme() }/>
-
+                <HomeIcon />
             </div>
-            {
-                if *mouse_over {
-                    html! { <HoverNameDisp name = { "home" }  theme = { prop.theme() } /> }
-                } else {
-                    html! {}
-                }
-            }
         </div>
     }
 }
 
 #[function_component]
-pub fn SettingsButton(prop: &ButtonProps) -> Html {
-    let mouse_over = use_state(|| false);
-
-    let onmouseover = {
-        let mouse_over = mouse_over.clone();
-        move |_| mouse_over.set(true)
-    };
-
-    let onmouseout = {
-        let mouse_over = mouse_over.clone();
-        move |_| mouse_over.set(false)
-    };
-
+pub fn SettingsButton() -> Html {
     let style = format! {"
         position: relative;
         overflow-x: visible;
@@ -226,35 +154,16 @@ pub fn SettingsButton(prop: &ButtonProps) -> Html {
     "};
 
     html! {
-        <div {style} {onmouseover} {onmouseout}>
+        <div {style}>
             <div class = "card" style = {icon_style}>
-                <SettingsIcon theme = { prop.theme() }/>
+                <SettingsIcon />
             </div>
-            {
-                if *mouse_over {
-                    html! { <HoverNameDisp name = { "settings" }  theme = { prop.theme() } /> }
-                } else {
-                    html! {}
-                }
-            }
         </div>
     }
 }
 
 #[function_component]
-pub fn HistoryButton(prop: &ButtonProps) -> Html {
-    let mouse_over = use_state(|| false);
-
-    let onmouseover = {
-        let mouse_over = mouse_over.clone();
-        move |_| mouse_over.set(true)
-    };
-
-    let onmouseout = {
-        let mouse_over = mouse_over.clone();
-        move |_| mouse_over.set(false)
-    };
-
+pub fn HistoryButton() -> Html {
     let style = format! {"
         position: relative;
         overflow-x: visible;
@@ -273,36 +182,16 @@ pub fn HistoryButton(prop: &ButtonProps) -> Html {
     "};
 
     html! {
-        <div {style} {onmouseover} {onmouseout}>
+        <div {style}>
             <div class = "card" style = {icon_style}>
-                <HistoryIcon theme = { prop.theme() }/>
-
+                <HistoryIcon />
             </div>
-            {
-                if *mouse_over {
-                    html! { <HoverNameDisp name = { "history" }  theme = { prop.theme() } /> }
-                } else {
-                    html! {}
-                }
-            }
         </div>
     }
 }
 
 #[function_component]
-pub fn BookmarksButton(prop: &ButtonProps) -> Html {
-    let mouse_over = use_state(|| false);
-
-    let onmouseover = {
-        let mouse_over = mouse_over.clone();
-        move |_| mouse_over.set(true)
-    };
-
-    let onmouseout = {
-        let mouse_over = mouse_over.clone();
-        move |_| mouse_over.set(false)
-    };
-
+pub fn BookmarksButton() -> Html {
     let style = format! {"
         position: relative;
         overflow-x: visible;
@@ -321,36 +210,16 @@ pub fn BookmarksButton(prop: &ButtonProps) -> Html {
     "};
 
     html! {
-        <div {style} {onmouseover} {onmouseout}>
+        <div {style}>
             <div class = "card" style = {icon_style}>
                 <BookmarksIcon />
-
             </div>
-            {
-                if *mouse_over {
-                    html! { <HoverNameDisp name = { "bookmarks" }  theme = { prop.theme() } /> }
-                } else {
-                    html! {}
-                }
-            }
         </div>
     }
 }
 
 #[function_component]
-pub fn CloudButton(prop: &ButtonProps) -> Html {
-    let mouse_over = use_state(|| false);
-
-    let onmouseover = {
-        let mouse_over = mouse_over.clone();
-        move |_| mouse_over.set(true)
-    };
-
-    let onmouseout = {
-        let mouse_over = mouse_over.clone();
-        move |_| mouse_over.set(false)
-    };
-
+pub fn CloudButton() -> Html {
     let style = format! {"
         position: relative;
         overflow-x: visible;
@@ -369,36 +238,16 @@ pub fn CloudButton(prop: &ButtonProps) -> Html {
     "};
 
     html! {
-        <div {style} {onmouseover} {onmouseout}>
+        <div {style}>
             <div class = "card" style = {icon_style}>
                 <CloudStorageIcon />
-
             </div>
-            {
-                if *mouse_over {
-                    html! { <HoverNameDisp name = { "cloud" }  theme = { prop.theme() } /> }
-                } else {
-                    html! {}
-                }
-            }
         </div>
     }
 }
 
 #[function_component]
-pub fn LockedButton(prop: &ButtonProps) -> Html {
-    let mouse_over = use_state(|| false);
-
-    let onmouseover = {
-        let mouse_over = mouse_over.clone();
-        move |_| mouse_over.set(true)
-    };
-
-    let onmouseout = {
-        let mouse_over = mouse_over.clone();
-        move |_| mouse_over.set(false)
-    };
-
+pub fn LockedButton() -> Html {
     let style = format! {"
         position: relative;
         overflow-x: visible;
@@ -417,18 +266,10 @@ pub fn LockedButton(prop: &ButtonProps) -> Html {
     "};
 
     html! {
-        <div {style} {onmouseover} {onmouseout}>
+        <div {style}>
             <div class = "card" style = {icon_style}>
                 <LockedIcon />
-
             </div>
-            {
-                if *mouse_over {
-                    html! { <HoverNameDisp name = { "locked" }  theme = { prop.theme() } /> }
-                } else {
-                    html! {}
-                }
-            }
         </div>
     }
 }

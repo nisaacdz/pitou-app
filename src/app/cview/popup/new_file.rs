@@ -1,16 +1,15 @@
-use std::{rc::Rc, cell::RefCell};
+use std::{cell::RefCell, rc::Rc};
 
 use backend::Pitou;
+use serde::Serialize;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
-use serde::Serialize;
 
 use crate::app::Theme;
 
 #[derive(PartialEq, Properties)]
 pub struct NewFilePopUpProps {
     pub directory: Pitou,
-    pub theme: Theme,
     pub onclickok: Callback<Rc<RefCell<String>>>,
     pub onclickcancel: Callback<()>,
 }
@@ -23,8 +22,10 @@ struct NewFileArgs<'a> {
 
 #[function_component]
 pub fn NewFilePopUp(prop: &NewFilePopUpProps) -> Html {
-    let border_color = prop.theme.spare();
-    let background_color = prop.theme.background2();
+    let theme = use_context::<Theme>().unwrap();
+
+    let border_color = theme.spare();
+    let background_color = theme.background2();
 
     let style = format! {"
     background-color: {background_color};
@@ -38,9 +39,11 @@ pub fn NewFilePopUp(prop: &NewFilePopUpProps) -> Html {
 
     let oninput = {
         let filename = filename.clone();
-        move |e: InputEvent| e.target_dyn_into::<HtmlInputElement>()
+        move |e: InputEvent| {
+            e.target_dyn_into::<HtmlInputElement>()
                 .map(|elem| *filename.borrow_mut() = elem.value())
                 .unwrap_or_default()
+        }
     };
 
     let onclick = |e: MouseEvent| e.stop_immediate_propagation();
@@ -59,7 +62,11 @@ pub fn NewFilePopUp(prop: &NewFilePopUpProps) -> Html {
     let onkeypress = {
         let onclickok = prop.onclickok.clone();
         let filename = filename.clone();
-        move |e: KeyboardEvent| if e.key_code() == 13 { onclickok.emit(filename.clone()) }
+        move |e: KeyboardEvent| {
+            if e.key_code() == 13 {
+                onclickok.emit(filename.clone())
+            }
+        }
     };
 
     let placeholder = "Enter file name...".to_owned();

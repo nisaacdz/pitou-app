@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::vec::IntoIter;
 
 use serde_wasm_bindgen::{from_value, to_value};
 use wasm_bindgen_futures::spawn_local;
@@ -9,66 +9,138 @@ use backend::Pitou;
 
 use super::{cview::*, Theme};
 
-#[derive(PartialEq, Properties)]
-pub struct ContentViewProps {
-    pub theme: Theme,
+#[derive(PartialEq)]
+struct ContentViewState {
+    directory: Option<Pitou>,
+    children: Option<Vec<Pitou>>,
+    siblings: Option<Vec<Pitou>>,
+}
+
+impl Default for ContentViewState {
+    fn default() -> Self {
+        ContentViewState {
+            directory: None,
+            children: None,
+            siblings: None,
+        }
+    }
+}
+
+impl ContentViewState {
+    fn directory(&self) -> Option<Pitou> {
+        self.directory.clone()
+    }
+
+    fn children(&self) -> Option<Vec<Pitou>> {
+        self.children.clone()
+    }
+
+    fn siblings(&self) -> Option<Vec<Pitou>> {
+        self.siblings.clone()
+    }
 }
 
 #[function_component]
-pub fn ContentView(prop: &ContentViewProps) -> Html {
-    let directory = use_state(|| None);
-    let children = use_state(|| RefCell::new(None));
+pub fn ContentView() -> Html {
+    let state = use_state(|| ContentViewState::default());
+    let theme = use_context::<Theme>().unwrap();
 
     {
-        let directory = directory.clone();
-        let children = children.clone();
-        let arg = to_value(&PitouNoArg).unwrap();
+        let state = state.clone();
         use_effect_with_deps(
-            |_| {
-                spawn_local(async move {
-                    let js_val = invoke("get_debug_file", arg).await;
-                    let res = from_value::<Pitou>(js_val).unwrap();
-                    update_children(&res, &*children).await;
-                    directory.set(Some(res))
-                });
+            move |state| {
+                let state = state.clone();
+
+                match &*state {
+                    ContentViewState {
+                        directory: None,
+                        children: _,
+                        siblings: _,
+                    } => {
+                        let state = state.clone();
+                        spawn_local(async move {
+                            let js_val =
+                                invoke("last_history_or_default", to_value(&PitouNoArg).unwrap())
+                                    .await;
+                            let directory = from_value::<Pitou>(js_val).unwrap();
+                            state.set(ContentViewState {
+                                directory: Some(directory),
+                                children: None,
+                                siblings: None,
+                            })
+                        })
+                    }
+                    ContentViewState {
+                        directory: Some(directory),
+                        children: None,
+                        siblings: None,
+                    } => {
+                        let state = state.clone();
+                        let directory = directory.clone();
+
+                        spawn_local(async move {
+                            let children = from_value::<Vec<Pitou>>(
+                                invoke(
+                                    "children",
+                                    to_value(&PitouArg { pitou: &directory }).unwrap(),
+                                )
+                                .await,
+                            )
+                            .unwrap();
+                            let siblings = from_value::<Vec<Pitou>>(
+                                invoke(
+                                    "siblings",
+                                    to_value(&PitouArg { pitou: &directory }).unwrap(),
+                                )
+                                .await,
+                            )
+                            .unwrap();
+                            state.set(ContentViewState {
+                                directory: Some(directory.clone()),
+                                children: Some(children),
+                                siblings: Some(siblings),
+                            });
+                        });
+                    }
+
+                    ContentViewState {
+                        directory: Some(_),
+                        children: _,
+                        siblings: _,
+                    } => (),
+                }
             },
-            (),
+            state.clone(),
         );
     }
 
-    async fn update_children(pitou: &Pitou, children: &RefCell<Option<Vec<Pitou>>>) {
-        crate::data::update_directory(Some(pitou.clone()));
+    fn jot_dir_history(pitou: &Pitou) {
         let arg = to_value(&PitouArg { pitou }).unwrap();
-        let res = from_value::<Vec<Pitou>>(invoke("children", arg).await).unwrap();
-        children.borrow_mut().replace(res);
+        spawn_local(async move {
+            invoke("append_history", arg).await;
+        });
     }
 
     let updatedirectory = Callback::from({
-        let directory = directory.clone();
-        let children = children.clone();
+        let state = state.clone();
 
-        move |new_dir: Pitou| {
-            let children = children.clone();
-            let directory = directory.clone();
-            spawn_local(async move {
-                update_children(&new_dir, &*children).await;
-                directory.set(Some(new_dir))
-            });
+        move |directory: Pitou| {
+            crate::data::update_directory(Some(directory.clone()));
+            crate::data::update_selected::<IntoIter<Pitou>>(None);
+            jot_dir_history(&directory);
+            let new_state = ContentViewState {
+                directory: Some(directory),
+                children: None,
+                siblings: None,
+            };
+            state.set(new_state);
         }
     });
 
     let updateui = {
-        let directory = directory.clone();
-        let updatedirectory = updatedirectory.clone();
-        move |_| {
-            gloo::console::log!("ui updated or refreshed");
-            if let Some(new_dir) = &*directory {
-                updatedirectory.emit(new_dir.clone())
-            }
-        }
+        let state = state.clone();
+        move |_| state.set(ContentViewState::default())
     };
-
-    let theme = prop.theme;
 
     let background_color = theme.background1();
 
@@ -82,15 +154,15 @@ pub fn ContentView(prop: &ContentViewProps) -> Html {
 
     html! {
         <div {style} >
-            <TopPane {theme} updatedirectory = { updatedirectory.clone() } pitou = { (&*directory).clone() } {updateui}/>
+            <TopPane updatedirectory = { updatedirectory.clone() } pitou = { state.directory() } {updateui}/>
 
-            <BottomPane {theme} />
+            <BottomPane/>
 
-            <LeftPane {theme} />
+            <LeftPane/>
 
-            <SidePane pitou = { (&*directory).clone() } {theme} updatedirectory = { updatedirectory.clone() } />
+            <SidePane siblings = { state.siblings() } selected = { state.directory() } updatedirectory = { updatedirectory.clone() } />
 
-            <MainPane {theme} {updatedirectory} children = {(*children.borrow()).clone()}/>
+            <MainPane {updatedirectory} children = { state.children() }/>
         </div>
     }
 }

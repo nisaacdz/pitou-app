@@ -1,8 +1,8 @@
-use std::{rc::Rc, cell::RefCell};
+use std::{cell::RefCell, rc::Rc};
 
 use crate::app::{
-    new_dir::NewDirPopUp, new_file::NewFilePopUp, rename::RenamePopUp, AddFile, AddFolder,
-    RenameIcon, PitouArg, invoke, PitouAndNameArgs,
+    invoke, new_dir::NewDirPopUp, new_file::NewFilePopUp, rename::RenamePopUp, AddFile, AddFolder,
+    PitouAndNameArgs, PitouArg, RenameIcon,
 };
 use serde_wasm_bindgen::to_value;
 use wasm_bindgen_futures::spawn_local;
@@ -60,7 +60,6 @@ pub fn RenameButton(prop: &TopButtonProps) -> Html {
         }
     };
 
-
     let onclickcancel = {
         let item_to_rename = item_to_rename.clone();
 
@@ -84,10 +83,8 @@ pub fn RenameButton(prop: &TopButtonProps) -> Html {
     width: 100%;
     "};
 
-    let theme = prop.theme;
-
     let rename_or_not = if let Some(file) = &*item_to_rename {
-        html! { <RenamePopUp file = { file.clone() } {onclickok} {onclickcancel} {theme}/> }
+        html! { <RenamePopUp file = { file.clone() } {onclickok} {onclickcancel}/> }
     } else {
         html! {}
     };
@@ -99,7 +96,7 @@ pub fn RenameButton(prop: &TopButtonProps) -> Html {
                 <RenameIcon />
 
             </div>
-            <NameField name = { "rename" }  {theme} />
+            <NameField name = { "rename" }/>
         </div>
     }
 }
@@ -170,10 +167,8 @@ pub fn NewFolderButton(prop: &TopButtonProps) -> Html {
     width: 100%;
     "};
 
-    let theme = prop.theme;
-
     let create_or_not = if let Some(directory) = &*create_dir_in {
-        html! { <NewDirPopUp directory = { directory.clone() } {onclickok} {theme} {onclickcancel} /> }
+        html! { <NewDirPopUp directory = { directory.clone() } {onclickok} {onclickcancel} /> }
     } else {
         html! {}
     };
@@ -185,7 +180,7 @@ pub fn NewFolderButton(prop: &TopButtonProps) -> Html {
                 <AddFolder />
 
             </div>
-            <NameField name = { "folder" }  {theme} />
+            <NameField name = { "folder" }/>
         </div>
     }
 }
@@ -239,8 +234,6 @@ pub fn NewFileButton(prop: &TopButtonProps) -> Html {
         }
     };
 
-    let theme = prop.theme;
-
     let style = format! {"
     width: 50px;
     height: 100%;
@@ -259,7 +252,7 @@ pub fn NewFileButton(prop: &TopButtonProps) -> Html {
     "};
 
     let create_or_not = if let Some(directory) = &*create_file_in {
-        html! { <NewFilePopUp directory = { directory.clone() } {onclickok} {onclickcancel} {theme}/> }
+        html! { <NewFilePopUp directory = { directory.clone() } {onclickok} {onclickcancel}/> }
     } else {
         html! {}
     };
@@ -270,7 +263,7 @@ pub fn NewFileButton(prop: &TopButtonProps) -> Html {
             <div class = "card" style = {icon_style}>
                 <AddFile />
             </div>
-            <NameField name = { "file" }  {theme} />
+            <NameField name = { "file" }/>
         </div>
     }
 }

@@ -11,7 +11,6 @@ use crate::app::Theme;
 
 #[derive(PartialEq, Properties)]
 pub struct TopPaneProps {
-    pub theme: Theme,
     pub updatedirectory: Callback<Pitou>,
     pub pitou: Option<Pitou>,
     pub updateui: Callback<()>,
@@ -19,7 +18,7 @@ pub struct TopPaneProps {
 
 #[function_component]
 pub fn TopPane(prop: &TopPaneProps) -> Html {
-    let theme = prop.theme;
+    let theme = use_context::<Theme>().unwrap();
     let pitou = prop.pitou.clone();
 
     let background_color = theme.background1();
@@ -36,8 +35,8 @@ pub fn TopPane(prop: &TopPaneProps) -> Html {
 
     html! {
         <div {style}>
-            <ToolBar {theme} updatedirectory = { prop.updatedirectory.clone() } updateui = {prop.updateui.clone()} />
-            <AncestorsTabs {pitou} {theme} updatedirectory = { prop.updatedirectory.clone() } />
+            <ToolBar updateui = {prop.updateui.clone()} />
+            <AncestorsTabs {pitou} updatedirectory = { prop.updatedirectory.clone() } />
         </div>
     }
 }

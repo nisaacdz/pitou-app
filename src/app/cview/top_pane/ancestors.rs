@@ -6,13 +6,12 @@ use crate::{app::Theme, color};
 #[derive(PartialEq, Properties)]
 pub struct AncestorsTabsProps {
     pub pitou: Option<Pitou>,
-    pub theme: Theme,
     pub updatedirectory: Callback<Pitou>,
 }
 
 #[function_component]
 pub(super) fn AncestorsTabs(prop: &AncestorsTabsProps) -> Html {
-    let theme = prop.theme;
+    let theme = use_context::<Theme>().unwrap();
 
     let foreground_color = theme.foreground1();
     let background_color_2 = theme.background2();
@@ -46,9 +45,12 @@ pub(super) fn AncestorsTabs(prop: &AncestorsTabsProps) -> Html {
         .pitou
         .as_ref()
         .map(|pitou| {
-            pitou.ancestors().into_iter().map(|pitou| (pitou, prop.updatedirectory.clone()))
-        .map(|(pitou, updatedirectory)| html! { <Ancestor {pitou} {theme} {updatedirectory} /> })
-        .collect::<Html>()
+            pitou
+                .ancestors()
+                .into_iter()
+                .map(|pitou| (pitou, prop.updatedirectory.clone()))
+                .map(|(pitou, updatedirectory)| html! { <Ancestor {pitou} {updatedirectory} /> })
+                .collect::<Html>()
         })
         .unwrap_or(html! {});
 
@@ -64,12 +66,12 @@ pub(super) fn AncestorsTabs(prop: &AncestorsTabsProps) -> Html {
 #[derive(PartialEq, Properties)]
 pub struct AncestorProps {
     pitou: Pitou,
-    theme: Theme,
     updatedirectory: Callback<Pitou>,
 }
 
 #[function_component]
 pub(super) fn Ancestor(prop: &AncestorProps) -> Html {
+    let theme = use_context::<Theme>().unwrap();
     let mouse_is_overed = use_state_eq(|| false);
 
     let onmouseover = {
@@ -82,7 +84,6 @@ pub(super) fn Ancestor(prop: &AncestorProps) -> Html {
     };
 
     let pitou = prop.pitou.clone();
-    let theme = prop.theme;
 
     let background_color = theme.background2();
     let border_color = theme.spare();
@@ -99,11 +100,11 @@ pub(super) fn Ancestor(prop: &AncestorProps) -> Html {
         background-color: {background_color};
         font-size: 80%;
         {}
-    ", color!(*mouse_is_overed, prop.theme.spare())/*, brightness!(*mouse_is_overed, 300) */};
+    ", color!(*mouse_is_overed, theme.spare())/*, brightness!(*mouse_is_overed, 300) */};
 
     html! {
         <div class = "card" {style} {onmouseover} {onmouseout}>
-            <TabName {pitou} {theme} updatedirectory = { prop.updatedirectory.clone() } />
+            <TabName {pitou} updatedirectory = { prop.updatedirectory.clone() } />
             <Side/>
         </div>
     }
@@ -129,7 +130,6 @@ pub(super) fn Side() -> Html {
 #[derive(PartialEq, Properties)]
 pub struct TabNameProps {
     pitou: Pitou,
-    theme: Theme,
     updatedirectory: Callback<Pitou>,
 }
 

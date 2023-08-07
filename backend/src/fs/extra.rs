@@ -139,7 +139,6 @@ impl Pitou {
             metadata,
         })
     }
-
 }
 
 pub async fn debug_with_real_dir() -> Pitou {

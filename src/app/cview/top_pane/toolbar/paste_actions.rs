@@ -1,7 +1,7 @@
 use std::collections::LinkedList;
 
 use crate::app::{
-    invoke, ClipboardIcon, CopyIcon, CutIcon, ItemsArg, PasteIcon, PitouArg, PitouNoArg, Theme,
+    invoke, ClipboardIcon, CopyIcon, CutIcon, ItemsArg, PasteIcon, PitouArg, PitouNoArg,
 };
 use backend::Pitou;
 use serde_wasm_bindgen::{from_value, to_value};
@@ -12,7 +12,6 @@ use super::{NameField, TopButtonProps};
 
 #[derive(PartialEq, Properties)]
 pub struct PasteButtonProps {
-    pub theme: Theme,
     pub updateui: Callback<()>,
 }
 
@@ -50,20 +49,18 @@ pub fn PasteButton(prop: &PasteButtonProps) -> Html {
     width: 100%;
     "};
 
-    let theme = prop.theme;
-
     html! {
         <div {style} {onclick}>
             <div class = "card" style = {icon_style}>
                 <PasteIcon />
             </div>
-            <NameField name = { "paste" }  { theme } />
+            <NameField name = { "paste" }/>
         </div>
     }
 }
 
 #[function_component]
-pub fn CopyButton(prop: &TopButtonProps) -> Html {
+pub fn CopyButton(_prop: &TopButtonProps) -> Html {
     let onclick = move |_| {
         crate::data::get_selected()
             .map(|items| {
@@ -92,21 +89,19 @@ pub fn CopyButton(prop: &TopButtonProps) -> Html {
     width: 100%;
     "};
 
-    let theme = prop.theme;
-
     html! {
         <div {style} {onclick}>
             <div class = "card" style = {icon_style}>
                 <CopyIcon />
 
             </div>
-            <NameField name = { "copy" }  { theme } />
+            <NameField name = { "copy" }/>
         </div>
     }
 }
 
 #[function_component]
-pub fn CutButton(prop: &TopButtonProps) -> Html {
+pub fn CutButton(_prop: &TopButtonProps) -> Html {
     let onclick = move |_| {
         crate::data::get_selected()
             .map(|items| {
@@ -135,21 +130,19 @@ pub fn CutButton(prop: &TopButtonProps) -> Html {
     width: 100%;
     "};
 
-    let theme = prop.theme;
-
     html! {
         <div {style} {onclick}>
             <div class = "card" style = {icon_style}>
                 <CutIcon />
 
             </div>
-            <NameField name = { "cut" }  { theme } />
+            <NameField name = { "cut" }/>
         </div>
     }
 }
 
 #[function_component]
-pub fn ClipboardButton(prop: &TopButtonProps) -> Html {
+pub fn ClipboardButton(_prop: &TopButtonProps) -> Html {
     let clipboard = use_state(|| None);
 
     let onclick = {
@@ -185,15 +178,13 @@ pub fn ClipboardButton(prop: &TopButtonProps) -> Html {
     width: 100%;
     "};
 
-    let theme = prop.theme;
-
     html! {
         <div {style} {onclick}>
             <div class = "card" style = {icon_style}>
                 <ClipboardIcon />
 
             </div>
-            <NameField name = { "clipboard" }  { theme } />
+            <NameField name = { "clipboard" }/>
         </div>
     }
 }

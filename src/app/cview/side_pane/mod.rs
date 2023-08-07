@@ -1,10 +1,7 @@
 use backend::Pitou;
-// use gloo::console::log;
-use serde_wasm_bindgen::{from_value, to_value};
-use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
 
-use crate::app::{invoke, LoadingDisplay, PitouArg, Theme};
+use crate::app::{LoadingDisplay, Theme};
 mod rows;
 mod top;
 use rows::*;
@@ -12,41 +9,14 @@ use top::*;
 
 #[derive(PartialEq, Properties)]
 pub struct SidePaneProps {
-    pub pitou: Option<Pitou>,
-    pub theme: Theme,
+    pub selected: Option<Pitou>,
+    pub siblings: Option<Vec<Pitou>>,
     pub updatedirectory: Callback<Pitou>,
 }
 
 #[function_component]
 pub fn SidePane(prop: &SidePaneProps) -> Html {
-    let theme = prop.theme;
-    let directory = use_state(|| prop.pitou.clone());
-    let siblings = use_state(|| None);
-
-    {
-        let siblings = siblings.clone();
-
-        use_effect_with_deps(
-            |directory| {
-                let directory = directory.clone();
-                spawn_local(async move {
-                    if let Some(directory) = &*directory {
-                        let arg = to_value(&PitouArg { pitou: directory }).unwrap();
-                        let val = invoke("siblings", arg).await;
-                        let res = from_value::<Vec<Pitou>>(val)
-                            .expect("couldn't convert output to a vec of pitou's");
-                        siblings.set(Some(res))
-                    }
-                })
-            },
-            directory.clone(),
-        );
-    }
-
-    if &prop.pitou != &*directory {
-        siblings.set(None);
-        directory.set(prop.pitou.clone());
-    }
+    let theme = use_context::<Theme>().unwrap();
 
     let background_color = theme.background2();
     let border_color = theme.spare();
@@ -75,18 +45,16 @@ pub fn SidePane(prop: &SidePaneProps) -> Html {
     flex-direction: column;
     "};
 
-    let pitou = prop.pitou.clone();
-
-    let content = if let Some(pitous) = &*siblings {
+    let content = if let Some(pitous) = prop.siblings.as_ref() {
         let entries = pitous
             .iter()
-            .map(|pitou| (pitou.clone(), prop.updatedirectory.clone(), prop.pitou.as_ref() == Some(pitou)))
-            .map(|(pitou, updatedirectory, selected)| html! { <SidePaneRow  { pitou } {theme} {updatedirectory} {selected} /> })
+            .map(|pitou| (pitou.clone(), prop.updatedirectory.clone(), prop.selected.as_ref() == Some(pitou)))
+            .map(|(pitou, updatedirectory, selected)| html! { <SidePaneRow  { pitou } {updatedirectory} {selected} /> })
             .collect::<Html>();
 
         html! {
             <div style = {inner_style}>
-                <TopOfParentDir {pitou} {theme} />
+                <TopOfParentDir selected = { prop.selected.clone() }/>
                 {
                     entries
                 }

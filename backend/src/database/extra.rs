@@ -1,4 +1,4 @@
-use std::{collections::HashSet, sync::Arc};
+use std::sync::Arc;
 
 use tokio::sync::Mutex;
 
@@ -6,11 +6,12 @@ use crate::Pitou;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 
-const DATABSE_PATH: &'static str = "./public/data/database/database.db";
+const DATABSE_PATH: &'static str = "../dist/public/data/database/database.db";
 
 #[derive(Clone, Copy)]
 pub(crate) enum WhichTable {
     Bookmarks,
+    #[allow(dead_code)]
     Locked,
     History,
 }
@@ -34,33 +35,41 @@ impl std::fmt::Display for WhichTable {
 macro_rules! map_table {
     ($tab:expr, $conn:expr) => {
         match $tab {
-            WhichTable::Bookmarks => bookmarks::table
-                .select(bookmarks::items)
+            WhichTable::Bookmarks => all_tables::bookmarks::table
+                .select(all_tables::bookmarks::items)
                 .load::<String>($conn),
-            WhichTable::Locked => locked::table.select(locked::items).load::<String>($conn),
-            WhichTable::History => history::table.select(history::items).load::<String>($conn),
+            WhichTable::Locked => all_tables::locked::table
+                .select(all_tables::locked::items)
+                .load::<String>($conn),
+            WhichTable::History => all_tables::history::table
+                .select(all_tables::history::items)
+                .load::<String>($conn),
         }
     };
 }
 
-table! {
-    bookmarks {
-        id -> Integer,
-        items -> Text,
-    }
-}
+mod all_tables {
+    use super::table;
 
-table! {
-    locked {
-        id -> Integer,
-        items -> Text,
+    table! {
+        bookmarks {
+            id -> Integer,
+            items -> Text,
+        }
     }
-}
 
-table! {
-    history {
-        id -> Integer,
-        items -> Text,
+    table! {
+        locked {
+            id -> Integer,
+            items -> Text,
+        }
+    }
+
+    table! {
+        history {
+            id -> Integer,
+            items -> Text,
+        }
     }
 }
 
@@ -80,96 +89,55 @@ impl Database {
     }
 }
 
-fn create_table(
-    table_name: WhichTable,
-    conn: &mut SqliteConnection,
-) -> Result<(), diesel::result::Error> {
-    let str_query = format!("CREATE TABLE IF NOT EXISTS {table_name} (id INTEGER, items TEXT)");
-    diesel::sql_query(str_query).execute(conn)?;
-    Ok(())
-}
-
-pub(crate) async fn create_table_and_retry<O, F: FnOnce(&mut SqliteConnection) -> O>(
-    table: WhichTable,
-    conn: &mut SqliteConnection,
-    f: F,
-) -> O {
-    create_table(table, conn).unwrap();
-    f(conn)
+async fn create_tables_or_do_nothing() {
+    for table in [
+        WhichTable::History,
+        WhichTable::Bookmarks,
+        WhichTable::Locked,
+    ] {
+        let str_query = format!("CREATE TABLE IF NOT EXISTS {table} (id INTEGER PRIMARY KEY, items TEXT)");
+        diesel::sql_query(str_query)
+            .execute(get_or_init().lock().await.get_connection())
+            .expect(&format! {"couldn't create table {table}"});
+    }
 }
 
 pub(crate) async fn get_from_database(
-    conn: &mut SqliteConnection,
     table: WhichTable,
 ) -> Result<Vec<String>, diesel::result::Error> {
-    let results = match map_table!(table, conn) {
-        Ok(v) => v,
-        Err(e) => match e {
-            diesel::result::Error::DatabaseError(_, _) => {
-                create_table_and_retry(table, conn, |conn| map_table!(table, conn)).await?
-            }
-            e => return Err(e),
-        },
-    };
-    Ok(results)
+    match map_table!(table, get_or_init().lock().await.get_connection()) {
+        Ok(v) => Ok(v),
+        Err(e) => Err(e),
+    }
 }
 
 static mut ONCE: Option<Arc<Mutex<Database>>> = None;
 
 #[tokio::test]
 async fn test_init() {
-    let _ = get_or_init().await;
+    let _ = get_or_init();
 }
 
-async fn get_or_init() -> Arc<Mutex<Database>> {
+fn get_or_init() -> Arc<Mutex<Database>> {
     unsafe {
-        /*
-        fs::create_dir_all(std::path::PathBuf::from(DATABSE_PATH).parent().unwrap())
-            .await
-            .unwrap();
-        */
-        let new_db = Arc::new(Mutex::new(Database::new(DATABSE_PATH).unwrap()));
-        ONCE.get_or_insert(new_db).clone()
+        ONCE.get_or_insert_with(|| {
+            std::fs::create_dir_all(std::path::PathBuf::from(DATABSE_PATH).parent().unwrap())
+                .unwrap();
+            Arc::new(Mutex::new(Database::new(DATABSE_PATH).unwrap()))
+        })
+        .clone()
     }
 }
 
-async fn get(table: WhichTable) -> Result<Vec<Pitou>, diesel::result::Error> {
-    // Retrieve the JSON strings from the bookmarks table in the database
-    let conn = get_or_init().await;
-    let mut conn_lock = conn.lock().await;
-    let connection = conn_lock.get_connection();
-
-    let json_strings = get_from_database(connection, table).await?;
-
-    // Deserialize the JSON strings into Pitou structs
-    let mut res = Vec::new();
-    for json_str in json_strings {
-        let pitou = serde_json::from_str::<Pitou>(&json_str).unwrap();
-        res.push(pitou);
-    }
-
-    Ok(res)
+async fn get_all(table: WhichTable) -> Vec<Pitou> {
+    create_tables_or_do_nothing().await;
+    get_from_database(table)
+        .await
+        .expect("couldn't retrieve table contents")
+        .into_iter()
+        .map(|json_str| serde_json::from_str::<Pitou>(&json_str).unwrap())
+        .collect()
 }
-
-pub async fn lock(file: &Pitou, conn: &mut SqliteConnection) -> Result<(), diesel::result::Error> {
-    let bytes = bincode::serialize(&file).unwrap();
-    let json_str = serde_json::to_string(&bytes).unwrap();
-
-    match find(&json_str, conn) {
-        Ok(true) => Ok(()),
-        Ok(false) => insert(&json_str, conn),
-        Err(e) => match e {
-            diesel::result::Error::DatabaseError(_, _) => {
-                create_table_and_retry(WhichTable::Locked, conn, |conn| insert(&json_str, conn))
-                    .await
-            }
-            e => Err(e),
-        },
-    }
-}
-
-#[test]
-fn test_serdejson_bincode() {}
 
 macro_rules! json {
     ($file:expr) => {
@@ -177,91 +145,98 @@ macro_rules! json {
     };
 }
 
-fn find(json: &str, db: &mut SqliteConnection) -> Result<bool, diesel::result::Error> {
-    use crate::locked::dsl::*;
-    let results = locked
-        .filter(items.eq(json))
-        .select(diesel::dsl::count_star())
-        .first::<i64>(db)?;
+async fn append(pitou: &Pitou, table: WhichTable) -> Result<(), diesel::result::Error> {
+    let json = json!(pitou);
+    create_tables_or_do_nothing().await;
 
-    Ok(results > 0)
-}
-
-fn insert(json: &str, db: &mut SqliteConnection) -> Result<(), diesel::result::Error> {
-    use crate::locked::dsl::*;
-    diesel::insert_into(locked)
-        .values(items.eq(json))
-        .execute(db)?;
-
+    match table {
+        WhichTable::Bookmarks => {
+            diesel::insert_into(all_tables::bookmarks::table)
+                .values(all_tables::bookmarks::dsl::items.eq(json))
+                .execute(&mut get_or_init().lock().await.connection)?;
+        }
+        WhichTable::Locked => {
+            diesel::insert_into(all_tables::locked::table)
+                .values(all_tables::locked::dsl::items.eq(json))
+                .execute(&mut get_or_init().lock().await.connection)?;
+        }
+        WhichTable::History => {
+            diesel::insert_into(all_tables::history::table)
+                .values(all_tables::history::dsl::items.eq(json))
+                .execute(&mut get_or_init().lock().await.connection)?;
+        }
+    }
     Ok(())
 }
 
-pub async fn is_locked(file: &Pitou, db: &mut Database) -> Result<bool, diesel::result::Error> {
-    let json_str = json!(file);
-    find(&json_str, &mut db.connection)
-}
+async fn last_item(table: WhichTable) -> Option<Pitou> {
+    create_tables_or_do_nothing().await;
+    match table {
+        WhichTable::History => {
+            let pos = all_tables::history::table
+                .count()
+                .get_result::<i64>(get_or_init().lock().await.get_connection())
+                .unwrap();
 
-macro_rules! diesel_error {
-    ($error:expr) => {{
-        let error = $error;
-        let kind = match &error {
-            diesel::result::Error::InvalidCString(_) => std::io::ErrorKind::InvalidInput,
-            diesel::result::Error::DatabaseError(_, _) => std::io::ErrorKind::Other,
-            diesel::result::Error::NotFound => std::io::ErrorKind::NotFound,
-            diesel::result::Error::QueryBuilderError(_) => std::io::ErrorKind::InvalidInput,
-            diesel::result::Error::DeserializationError(_) => std::io::ErrorKind::InvalidData,
-            diesel::result::Error::SerializationError(_) => std::io::ErrorKind::InvalidData,
-            diesel::result::Error::RollbackErrorOnCommit {
-                rollback_error: _,
-                commit_error: _,
-            } => std::io::ErrorKind::Other,
-            diesel::result::Error::RollbackTransaction => std::io::ErrorKind::Other,
-            diesel::result::Error::AlreadyInTransaction => std::io::ErrorKind::PermissionDenied,
-            diesel::result::Error::NotInTransaction => std::io::ErrorKind::PermissionDenied,
-            diesel::result::Error::BrokenTransactionManager => std::io::ErrorKind::BrokenPipe,
-            _ => unimplemented!(),
-        };
+            if pos == 0 {
+                return None;
+            }
+            let val: String = all_tables::history::table
+                .select(all_tables::history::items)
+                .filter(all_tables::history::id.eq(pos as i32))
+                .first(get_or_init().lock().await.get_connection())
+                .expect("couldn't read row item to text");
 
-        std::io::Error::new(kind, error)
-    }};
-}
+            Some(serde_json::from_str(&val).expect("couldn't change db text to Pitou"))
+        }
+        WhichTable::Bookmarks => {
+            let pos = all_tables::bookmarks::table
+                .count()
+                .get_result::<i64>(get_or_init().lock().await.get_connection())
+                .unwrap();
+            if pos == 0 {
+                return None;
+            }
+            let val: String = all_tables::bookmarks::table
+                .select(all_tables::bookmarks::items)
+                .filter(all_tables::bookmarks::id.eq(pos as i32))
+                .first(get_or_init().lock().await.get_connection())
+                .unwrap();
 
-use super::{Bookmarks, History};
-
-impl Bookmarks {
-    pub async fn all() -> std::io::Result<Bookmarks> {
-        let bookmarks = get(WhichTable::Bookmarks)
-            .await
-            .map_err(|e| diesel_error!(e))?;
-        let locked = get(WhichTable::Locked)
-            .await
-            .map_err(|e| diesel_error!(e))?
-            .into_iter()
-            .collect::<HashSet<Pitou>>();
-        let values = bookmarks
-            .into_iter()
-            .filter(|fav| locked.contains(fav))
-            .collect();
-
-        Ok(Bookmarks { values })
+            Some(serde_json::from_str(&val).expect("couldn't change db text to Pitou"))
+        }
+        WhichTable::Locked => unimplemented!(),
     }
 }
 
-impl History {
-    pub async fn all() -> std::io::Result<History> {
-        let history = get(WhichTable::History)
-            .await
-            .map_err(|e| diesel_error!(e))?;
-        let locked = get(WhichTable::Locked)
-            .await
-            .map_err(|e| diesel_error!(e))?
-            .into_iter()
-            .collect::<HashSet<Pitou>>();
-        let values = history
-            .into_iter()
-            .filter(|fav| locked.contains(fav))
-            .collect();
+pub mod bookmarks {
+    use super::{get_all, Pitou, WhichTable};
 
-        Ok(History { values })
+    pub async fn all() -> Vec<Pitou> {
+        get_all(WhichTable::Bookmarks).await
+    }
+
+    pub async fn append(pitou: &Pitou) {
+        super::append(pitou, WhichTable::Bookmarks)
+            .await
+            .expect("couldn't append to bookmarks")
+    }
+}
+
+pub mod history {
+    use super::{get_all, Pitou, WhichTable};
+
+    pub async fn all() -> Vec<Pitou> {
+        get_all(WhichTable::History).await
+    }
+
+    pub async fn append(pitou: &Pitou) {
+        super::append(pitou, WhichTable::History)
+            .await
+            .expect("couldn't append to history")
+    }
+
+    pub async fn last() -> Option<Pitou> {
+        super::last_item(WhichTable::History).await
     }
 }

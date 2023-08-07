@@ -10,7 +10,7 @@ use rows::*;
 use space::*;
 use yew::prelude::*;
 
-use std::{rc::Rc, cell::RefCell};
+use std::{cell::RefCell, rc::Rc};
 
 macro_rules! do_nothing {
     () => {
@@ -33,7 +33,11 @@ impl Selected {
     fn toggle(&self, idx: usize) {
         let mut borrow = self.selected.borrow_mut();
         borrow.0[idx] = !borrow.0[idx];
-        if borrow.0[idx] { borrow.1 += 1 } else { borrow.1 -= 1 }
+        if borrow.0[idx] {
+            borrow.1 += 1
+        } else {
+            borrow.1 -= 1
+        }
     }
 
     pub fn all_checked(&self) -> bool {
@@ -60,13 +64,16 @@ impl Selected {
 #[derive(PartialEq, Properties)]
 pub struct MainPaneProps {
     pub children: Option<Vec<Pitou>>,
-    pub theme: Theme,
     pub updatedirectory: Callback<Pitou>,
 }
 
 #[function_component]
 pub fn MainPane(prop: &MainPaneProps) -> Html {
-    let selected = prop.children.as_ref().map(|children| Selected::new(children.len()));
+    let theme = use_context::<Theme>().unwrap();
+    let selected = prop
+        .children
+        .as_ref()
+        .map(|children| Selected::new(children.len()));
 
     let onclick = { move |_| do_nothing!() };
 
@@ -74,22 +81,30 @@ pub fn MainPane(prop: &MainPaneProps) -> Html {
         let selected = selected.clone();
         let children = prop.children.clone();
         move |idx| {
-            selected.as_ref().map(|selected| selected.toggle(idx)).unwrap_or_default();
-            crate::data::update_selected(
-                children.as_ref().map(|children|
-                children.iter()
-                .enumerate()
-                .filter(|(idx, _)| selected.as_ref().map(|s| s.idx(*idx)).unwrap_or(false))
-                .map(|(_, v)| v.clone())));
+            selected
+                .as_ref()
+                .map(|selected| selected.toggle(idx))
+                .unwrap_or_default();
+            crate::data::update_selected(children.as_ref().map(|children| {
+                children
+                    .iter()
+                    .enumerate()
+                    .filter(|(idx, _)| selected.as_ref().map(|s| s.idx(*idx)).unwrap_or(false))
+                    .map(|(_, v)| v.clone())
+            }));
         }
     };
 
     let toggleselectall = {
         let selected = selected.clone();
-        move |_| selected.as_ref().map(|selected| selected.toggle_all()).unwrap_or_default()
+        move |_| {
+            selected
+                .as_ref()
+                .map(|selected| selected.toggle_all())
+                .unwrap_or_default()
+        }
     };
 
-    let theme = prop.theme;
     let background_color = theme.background2();
     let spare_color = theme.spare();
 
@@ -117,23 +132,25 @@ pub fn MainPane(prop: &MainPaneProps) -> Html {
     width: 100%;
     "};
 
-    let content = prop.children.as_ref()
-    .map(|children| 
-        children.iter()
-        .enumerate()
-        .map(|(idx, pitou)| 
-            (idx, pitou.clone(), prop.updatedirectory.clone(), toggleselect.clone()))
-        .map(|(idx, pitou, updatedirectory, toggleselect)| html! { <Row {idx} {pitou} {theme} {toggleselect} {updatedirectory} /> })
-        .collect::<Html>()).map(|entries| html! {
-            <div style = {inner_style}>
+    let content = prop
+        .children
+        .as_ref()
+        .map(|children| children.iter()
+            .enumerate()
+            .map(|(idx, pitou)| (idx, pitou.clone(), prop.updatedirectory.clone(), toggleselect.clone()))
+            .map(|(idx, pitou, updatedirectory, toggleselect)| html! { <Row {idx} {pitou} {toggleselect} {updatedirectory} /> })
+            .collect::<Html>())
+        .map(|entries| html! {
+                <div style = {inner_style}>
                     { entries }
-                <FreeArea />
-            </div>
-        }).unwrap_or(html! { <LoadingScreen /> });
+                    <FreeArea />
+                </div>
+            })
+        .unwrap_or(html! { <LoadingScreen /> });
 
     html! {
         <div {style} {onclick}>
-        <RowDescriptor {toggleselectall} {selected} {theme}/>
+            <RowDescriptor {toggleselectall} {selected}/>
             { content }
         </div>
     }

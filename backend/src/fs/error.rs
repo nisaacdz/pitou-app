@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq)]
 pub enum RenameError {
@@ -9,7 +9,7 @@ pub enum RenameError {
     /// Includes lack of permission to visit or to create a newfile at the given location
     NoPermission,
     /// Occurs when the file is currently opened or in use when the rename is invoked
-    FileInUse
+    FileInUse,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq)]

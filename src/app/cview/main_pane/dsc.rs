@@ -7,13 +7,13 @@ use super::Selected;
 
 #[derive(Properties, PartialEq)]
 pub struct RowDescriptorProps {
-    pub(super) theme: Theme,
     pub(super) toggleselectall: Callback<()>,
     pub(super) selected: Option<Selected>,
 }
 
 #[function_component]
 pub fn RowDescriptor(prop: &RowDescriptorProps) -> Html {
+    let theme = use_context::<Theme>().unwrap();
     let ontoggle = {
         let toggleselectall = prop.toggleselectall.clone();
         move |()| {
@@ -21,7 +21,7 @@ pub fn RowDescriptor(prop: &RowDescriptorProps) -> Html {
         }
     };
 
-    let background_color = prop.theme.background2();
+    let background_color = theme.background2();
 
     let style = format! {"
     display: flex;
