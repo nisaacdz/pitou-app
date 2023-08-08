@@ -12,31 +12,48 @@ use super::TopButtonProps;
 pub fn DeleteButton(prop: &TopButtonProps) -> Html {
     let items_to_delete = use_state(|| None);
 
+    // {
+    //     let updateui = prop.updateui.clone();
+
+    //     use_effect_with_deps(|items_to_delete| {
+    //         if let None = &**items_to_delete {
+    //             updateui.emit(());
+    //         }
+    //     }, items_to_delete.clone());
+    // }
+
     let onclick = {
         let items_to_delete = items_to_delete.clone();
         move |_| {
-            if let Some(items) = crate::data::selected() {
-                if items.len() > 0 {
-                    items_to_delete.set(Some(items.clone()))
-                }
+            if crate::data::selected_len() > 0 {
+                items_to_delete.set(Some(crate::data::selected().collect::<Vec<_>>()))
             }
         }
     };
+
+    // let onclick = move |_| {
+    //     if crate::data::selected_len() > 0 {
+    //         let arg = to_value(&ItemsArg { items: crate::data::selected().collect()}).unwrap();
+    //         spawn_local(async move {
+    //             invoke("cut", arg).await;
+    //         });
+    //     }
+    // };
 
     let confirm = {
         let updateui = prop.updateui.clone();
         let items_to_delete = items_to_delete.clone();
         move |_| {
-            let updateui = updateui.clone();
-            let items_to_delete = items_to_delete.clone();
-            spawn_local(async move {
-                if let Some(items) = &*items_to_delete {
-                    let arg = to_value(&ItemsArg { items }).unwrap();
+            if let Some(items) = &*items_to_delete {
+                let arg = to_value(&ItemsArg { items: items }).unwrap();
+                let items_to_delete = items_to_delete.clone();
+                let updateui = updateui.clone();
+                spawn_local(async move {
                     invoke("delete", arg).await;
                     items_to_delete.set(None);
                     updateui.emit(());
-                }
-            });
+                });
+            }
         }
     };
 

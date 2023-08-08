@@ -28,10 +28,7 @@ pub fn RenameButton(prop: &TopButtonProps) -> Html {
         let item_to_rename = item_to_rename.clone();
         move |_| {
             if let None = &*item_to_rename {
-                if let Some(file) = crate::data::selected()
-                    .map(|items| items.first())
-                    .unwrap_or(None)
-                {
+                if let Some(file) = crate::data::selected().next() {
                     item_to_rename.set(Some(file.clone()))
                 }
             }

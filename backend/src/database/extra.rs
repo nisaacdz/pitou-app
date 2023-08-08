@@ -6,7 +6,7 @@ use crate::Pitou;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 
-const DATABSE_PATH: &'static str = "../dist/public/data/database/database.db";
+const DATABSE_PATH: &'static str = "./target/temp/database/database.db";
 
 #[derive(Clone, Copy)]
 pub(crate) enum WhichTable {
@@ -95,7 +95,8 @@ async fn create_tables_or_do_nothing() {
         WhichTable::Bookmarks,
         WhichTable::Locked,
     ] {
-        let str_query = format!("CREATE TABLE IF NOT EXISTS {table} (id INTEGER PRIMARY KEY, items TEXT)");
+        let str_query =
+            format!("CREATE TABLE IF NOT EXISTS {table} (id INTEGER PRIMARY KEY, items TEXT)");
         diesel::sql_query(str_query)
             .execute(get_or_init().lock().await.get_connection())
             .expect(&format! {"couldn't create table {table}"});

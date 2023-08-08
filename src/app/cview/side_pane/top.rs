@@ -35,7 +35,6 @@ pub fn TopOfParentDir(prop: &TopOfParentDirProps) -> Html {
     }
 }
 
-
 #[function_component]
 fn RefreshButton() -> Html {
     let theme = use_context::<Theme>().unwrap();

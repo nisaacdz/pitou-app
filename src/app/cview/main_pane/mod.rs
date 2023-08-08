@@ -55,7 +55,7 @@ impl Selected {
             borrow.1 = borrow.0.len();
         }
     }
-
+    #[allow(unused)]
     fn idx(&self, idx: usize) -> bool {
         self.selected.borrow().0[idx]
     }
@@ -69,11 +69,14 @@ pub struct MainPaneProps {
 
 #[function_component]
 pub fn MainPane(prop: &MainPaneProps) -> Html {
+    let selected = use_state(|| prop.children.as_ref().map(|v| Selected::new(v.len())));
+
     let theme = use_context::<Theme>().unwrap();
-    let selected = prop
-        .children
-        .as_ref()
-        .map(|children| Selected::new(children.len()));
+
+    // let selected = prop
+    //     .children
+    //     .as_ref()
+    //     .map(|children| Selected::new(children.len()));
 
     let onclick = { move |_| do_nothing!() };
 
@@ -85,13 +88,9 @@ pub fn MainPane(prop: &MainPaneProps) -> Html {
                 .as_ref()
                 .map(|selected| selected.toggle(idx))
                 .unwrap_or_default();
-            crate::data::update_selected(children.as_ref().map(|children| {
-                children
-                    .iter()
-                    .enumerate()
-                    .filter(|(idx, _)| selected.as_ref().map(|s| s.idx(*idx)).unwrap_or(false))
-                    .map(|(_, v)| v.clone())
-            }));
+            children
+                .as_ref()
+                .map(|v| crate::data::toggle_selected(&v[idx]));
         }
     };
 
@@ -150,7 +149,7 @@ pub fn MainPane(prop: &MainPaneProps) -> Html {
 
     html! {
         <div {style} {onclick}>
-            <RowDescriptor {toggleselectall} {selected}/>
+            <RowDescriptor {toggleselectall} selected = {(&*selected).clone()}/>
             { content }
         </div>
     }

@@ -28,7 +28,9 @@ pub async fn append_history(pitou: backend::Pitou) {
 
 #[tauri::command]
 pub async fn last_history_or_default() -> backend::Pitou {
-    backend::history::last().await.unwrap_or(backend::Pitou::from(std::path::PathBuf::from("")))
+    backend::history::last()
+        .await
+        .unwrap_or(backend::Pitou::from(std::path::PathBuf::from("")))
 }
 
 #[tauri::command]

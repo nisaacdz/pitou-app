@@ -1,5 +1,3 @@
-use std::vec::IntoIter;
-
 use serde_wasm_bindgen::{from_value, to_value};
 use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
@@ -126,7 +124,7 @@ pub fn ContentView() -> Html {
 
         move |directory: Pitou| {
             crate::data::update_directory(Some(directory.clone()));
-            crate::data::update_selected::<IntoIter<Pitou>>(None);
+            crate::data::clear_selected();
             jot_dir_history(&directory);
             let new_state = ContentViewState {
                 directory: Some(directory),

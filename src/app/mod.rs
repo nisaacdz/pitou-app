@@ -17,7 +17,7 @@ pub(crate) struct PitouArg<'a> {
 
 #[derive(Serialize)]
 pub(crate) struct ItemsArg<'a> {
-    pub items: &'a Vec<Pitou>,
+    pub items: &'a Vec<&'a Pitou>,
 }
 
 #[derive(Serialize)]

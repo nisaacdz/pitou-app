@@ -23,8 +23,8 @@ pub fn PasteButton(prop: &PasteButtonProps) -> Html {
         let updateui = updateui.clone();
         crate::data::directory()
             .map(|pitou| {
+                let args = to_value(&PitouArg { pitou }).unwrap();
                 spawn_local(async move {
-                    let args = to_value(&PitouArg { pitou }).unwrap();
                     invoke("paste", args).await;
                     updateui.emit(());
                 });
@@ -62,14 +62,15 @@ pub fn PasteButton(prop: &PasteButtonProps) -> Html {
 #[function_component]
 pub fn CopyButton(_prop: &TopButtonProps) -> Html {
     let onclick = move |_| {
-        crate::data::get_selected()
-            .map(|items| {
-                spawn_local(async move {
-                    let args = to_value(&ItemsArg { items: &items }).unwrap();
-                    invoke("copy", args).await;
-                });
+        if crate::data::selected_len() > 0 {
+            let arg = to_value(&ItemsArg {
+                items: &crate::data::selected().collect::<Vec<_>>(),
             })
-            .unwrap_or_default()
+            .unwrap();
+            spawn_local(async move {
+                invoke("copy", arg).await;
+            });
+        }
     };
 
     let style = format! {"
@@ -103,14 +104,15 @@ pub fn CopyButton(_prop: &TopButtonProps) -> Html {
 #[function_component]
 pub fn CutButton(_prop: &TopButtonProps) -> Html {
     let onclick = move |_| {
-        crate::data::get_selected()
-            .map(|items| {
-                spawn_local(async move {
-                    let args = to_value(&ItemsArg { items: &items }).unwrap();
-                    invoke("cut", args).await;
-                });
+        if crate::data::selected_len() > 0 {
+            let arg = to_value(&ItemsArg {
+                items: &crate::data::selected().collect::<Vec<_>>(),
             })
-            .unwrap_or_default()
+            .unwrap();
+            spawn_local(async move {
+                invoke("cut", arg).await;
+            });
+        }
     };
 
     let style = format! {"
