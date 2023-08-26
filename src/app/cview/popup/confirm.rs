@@ -1,6 +1,6 @@
 use yew::prelude::*;
 
-use crate::app::Theme;
+use crate::app::ApplicationContext;
 
 #[derive(PartialEq, Properties)]
 pub struct ConfirmProps {
@@ -11,14 +11,18 @@ pub struct ConfirmProps {
 
 #[function_component]
 pub fn Confirm(prop: &ConfirmProps) -> Html {
-    let theme = use_context::<Theme>().unwrap();
+    let ApplicationContext {
+        theme,
+        sizes,
+        settings: _,
+    } = use_context::<ApplicationContext>().unwrap();
 
     let onclickcancel = {
         let cancel = prop.cancel.clone();
         move |_| cancel.emit(())
     };
 
-    let onclick = move |e: MouseEvent| e.stop_immediate_propagation();
+    let onclick = move |e: MouseEvent| e.stop_propagation();
 
     let background_color = theme.background2();
     let border_color = theme.spare();

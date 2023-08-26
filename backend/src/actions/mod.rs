@@ -1,5 +1,11 @@
 pub mod clipboard;
 
+#[cfg(feature = "tauri")]
+mod search;
+
+#[cfg(feature = "tauri")]
+pub use search::*;
+
 use std::{io, path::PathBuf};
 
 use fs_extra::dir::CopyOptions;

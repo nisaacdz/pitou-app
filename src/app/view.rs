@@ -1,167 +1,71 @@
-use serde_wasm_bindgen::{from_value, to_value};
-use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
 
-use crate::app::{invoke, PitouArg, PitouNoArg};
-use backend::Pitou;
+use crate::app::{ApplicationContext, SearchPage};
 
-use super::{cview::*, Theme};
+use super::{cview::*, AppView, BottomPane, Pane, ToolBar};
 
-#[derive(PartialEq)]
-struct ContentViewState {
-    directory: Option<Pitou>,
-    children: Option<Vec<Pitou>>,
-    siblings: Option<Vec<Pitou>>,
-}
-
-impl Default for ContentViewState {
-    fn default() -> Self {
-        ContentViewState {
-            directory: None,
-            children: None,
-            siblings: None,
-        }
-    }
-}
-
-impl ContentViewState {
-    fn directory(&self) -> Option<Pitou> {
-        self.directory.clone()
-    }
-
-    fn children(&self) -> Option<Vec<Pitou>> {
-        self.children.clone()
-    }
-
-    fn siblings(&self) -> Option<Vec<Pitou>> {
-        self.siblings.clone()
-    }
+#[derive(PartialEq, Properties)]
+pub struct ContentViewProp {
+    pub updateview: Callback<AppView>,
 }
 
 #[function_component]
-pub fn ContentView() -> Html {
-    let state = use_state(|| ContentViewState::default());
-    let theme = use_context::<Theme>().unwrap();
+pub fn ContentView(prop: &ContentViewProp) -> Html {
+    let ApplicationContext {
+        theme,
+        sizes,
+        settings,
+    } = use_context::<ApplicationContext>().unwrap();
+    let force_update = use_force_update();
 
-    {
-        let state = state.clone();
-        use_effect_with_deps(
-            move |state| {
-                let state = state.clone();
-
-                match &*state {
-                    ContentViewState {
-                        directory: None,
-                        children: _,
-                        siblings: _,
-                    } => {
-                        let state = state.clone();
-                        spawn_local(async move {
-                            let js_val =
-                                invoke("last_history_or_default", to_value(&PitouNoArg).unwrap())
-                                    .await;
-                            let directory = from_value::<Pitou>(js_val).unwrap();
-                            state.set(ContentViewState {
-                                directory: Some(directory),
-                                children: None,
-                                siblings: None,
-                            })
-                        })
-                    }
-                    ContentViewState {
-                        directory: Some(directory),
-                        children: None,
-                        siblings: None,
-                    } => {
-                        let state = state.clone();
-                        let directory = directory.clone();
-
-                        spawn_local(async move {
-                            let children = from_value::<Vec<Pitou>>(
-                                invoke(
-                                    "children",
-                                    to_value(&PitouArg { pitou: &directory }).unwrap(),
-                                )
-                                .await,
-                            )
-                            .unwrap();
-                            let siblings = from_value::<Vec<Pitou>>(
-                                invoke(
-                                    "siblings",
-                                    to_value(&PitouArg { pitou: &directory }).unwrap(),
-                                )
-                                .await,
-                            )
-                            .unwrap();
-                            state.set(ContentViewState {
-                                directory: Some(directory.clone()),
-                                children: Some(children),
-                                siblings: Some(siblings),
-                            });
-                        });
-                    }
-
-                    ContentViewState {
-                        directory: Some(_),
-                        children: _,
-                        siblings: _,
-                    } => (),
-                }
-            },
-            state.clone(),
-        );
-    }
-
-    fn jot_dir_history(pitou: &Pitou) {
-        let arg = to_value(&PitouArg { pitou }).unwrap();
-        spawn_local(async move {
-            invoke("append_history", arg).await;
-        });
-    }
-
-    let updatedirectory = Callback::from({
-        let state = state.clone();
-
-        move |directory: Pitou| {
-            crate::data::update_directory(Some(directory.clone()));
-            crate::data::clear_selected();
-            jot_dir_history(&directory);
-            let new_state = ContentViewState {
-                directory: Some(directory),
-                children: None,
-                siblings: None,
-            };
-            state.set(new_state);
-        }
-    });
-
-    let updateui = {
-        let state = state.clone();
-        move |_| state.set(ContentViewState::default())
-    };
+    let updateui = { move |_| force_update.force_update() };
 
     let background_color = theme.background1();
+    let size = sizes.screen();
 
     let style = format! {"
-    width: 100%;
-    height: 100%;
     background-color: {background_color};
     margin: 0% 0% 0% 0%;
     padding: 0% 0% 0% 0%;
-    position: absolute;" };
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    {size}
+    gap: 0;" };
 
-    html! {
-        <div {style} >
-            <TopPane updatedirectory = { updatedirectory.clone() } pitou = { state.directory() } {updateui}/>
+    let middle_size = sizes.middle_portion();
 
-            <BottomPane/>
+    let middle_style = format! {"
+    display: flex;
+    flex-direction: row;
+    {middle_size}
+    gap: 0;
+    "};
 
-            <LeftPane/>
-
-            <SidePane siblings = { state.siblings() } selected = { state.directory() } updatedirectory = { updatedirectory.clone() } />
-
-            <MainPane {updatedirectory} children = { state.children() }/>
-        </div>
+    match settings.view() {
+        AppView::Explorer => html! {
+            <div {style} >
+                <ToolBar {updateui}/>
+                <div style = {middle_style}>
+                    <LeftPane updateview = {prop.updateview.clone()}/>
+                    <Pane/>
+                </div>
+                <BottomPane/>
+            </div>
+        },
+        AppView::Home => html! { <h1>{"Hello Home"}</h1> },
+        AppView::Settings => html! { <h1>{"Hello Settings"}</h1> },
+        AppView::Search => html! {
+            <div {style} >
+                <ToolBar {updateui}/>
+                <div style = {middle_style}>
+                    <LeftPane updateview = {prop.updateview.clone()}/>
+                    <SearchPage/>
+                </div>
+                <BottomPane/>
+            </div>
+        },
+        _ => html! { <h1>{"Unimplemented"}</h1> },
     }
 }
 

@@ -1,7 +1,11 @@
 use yew::prelude::*;
 
+mod ancestors;
+mod main_pane;
 mod props;
 
+pub use ancestors::*;
+pub use main_pane::*;
 pub use props::*;
 mod clicks;
 
@@ -10,7 +14,7 @@ pub use clicks::*;
 #[function_component]
 pub fn DirIcon() -> Html {
     html! {
-        <img src="./public/icons/main/opened_folder.png" alt="folder" width = "80%"/>
+        <img src="./public/icons/main/folder.png" alt="folder" width = "80%"/>
     }
 }
 
@@ -89,28 +93,28 @@ pub fn BackIcon() -> Html {
 #[function_component]
 pub fn SearchIcon() -> Html {
     html! {
-        <img height = "100%" src="./public/icons/top/search.png" alt="search" />
+        <img src="./public/icons/top/search.png" alt="search" />
     }
 }
 
 #[function_component]
 pub fn LockedIcon() -> Html {
     html! {
-        <img src="./public/icons/side/locked.png" alt="locked" width = "80%"/>
+        <img src="./public/icons/side/locked.png" alt="locked"/>
     }
 }
 
 #[function_component]
 pub fn CloudIcon() -> Html {
     html! {
-        <img src="./public/icons/side/cloud_dir.png" alt="cloud" width = "80%"/>
+        <img src="./public/icons/side/cloud_dir.png" alt="cloud"/>
     }
 }
 
 #[function_component]
 pub fn CloudStorageIcon() -> Html {
     html! {
-        <img src="./public/icons/side/cloud_dir.png" alt="cloud storage" width = "80%"/>
+        <img src="./public/icons/side/cloud_dir.png" alt="cloud storage"/>
     }
 }
 
@@ -138,14 +142,14 @@ pub fn CopyIcon() -> Html {
 #[function_component]
 pub fn BookmarksIcon() -> Html {
     html! {
-        <img src="./public/icons/side/bookmark.png" alt="bookmarks" width = "80%"/>
+        <img src="./public/icons/side/bookmark.png" alt="bookmarks"/>
     }
 }
 
 #[function_component]
 pub fn HistoryIcon() -> Html {
     html! {
-        <img src="./public/icons/side/history.png" alt="history" width = "80%"/>
+        <img src="./public/icons/side/history.png" alt="history"/>
     }
 }
 
@@ -173,6 +177,6 @@ pub fn DeleteIcon() -> Html {
 #[function_component]
 pub fn RenameIcon() -> Html {
     html! {
-        <img height = "100%" src="./public/icons/top/add_file.png" alt="new file" />
+        <img height = "100%" src="./public/icons/top/rename.png" alt="rename" />
     }
 }

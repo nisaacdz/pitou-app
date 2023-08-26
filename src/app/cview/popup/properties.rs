@@ -20,7 +20,7 @@ pub fn Properties(prop: &PropertiesProps) -> Html {
     border: 2px solid {border_color};
     "};
 
-    let onclick = |e: MouseEvent| e.stop_immediate_propagation();
+    let onclick = |e: MouseEvent| e.stop_propagation();
     let entries = {
         html! {
             <div>

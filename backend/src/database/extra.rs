@@ -90,11 +90,7 @@ impl Database {
 }
 
 async fn create_tables_or_do_nothing() {
-    for table in [
-        WhichTable::History,
-        WhichTable::Bookmarks,
-        WhichTable::Locked,
-    ] {
+    for table in [WhichTable::History, WhichTable::Bookmarks, WhichTable::Locked] {
         let str_query =
             format!("CREATE TABLE IF NOT EXISTS {table} (id INTEGER PRIMARY KEY, items TEXT)");
         diesel::sql_query(str_query)

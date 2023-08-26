@@ -1,0 +1,4 @@
+reorder_imports = true
+array_width = 80
+max_width = 100
+attr_fn_like_width = 80

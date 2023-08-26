@@ -1,13 +1,11 @@
 use backend::Pitou;
 use yew::prelude::*;
 
-mod ancestors;
 mod toolbar;
 
-use ancestors::*;
 use toolbar::*;
 
-use crate::app::Theme;
+use crate::app::ApplicationContext;
 
 #[derive(PartialEq, Properties)]
 pub struct TopPaneProps {
@@ -18,7 +16,7 @@ pub struct TopPaneProps {
 
 #[function_component]
 pub fn TopPane(prop: &TopPaneProps) -> Html {
-    let theme = use_context::<Theme>().unwrap();
+    let ApplicationContext { theme, sizes, settings: _ } = use_context::<ApplicationContext>().unwrap();
     let pitou = prop.pitou.clone();
 
     let background_color = theme.background1();

@@ -1,21 +1,24 @@
-use std::{cell::RefCell, rc::Rc};
-
 use backend::Pitou;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
-use crate::app::Theme;
+use crate::app::ApplicationContext;
 
 #[derive(PartialEq, Properties)]
 pub struct RenamePopUpProps {
     pub file: Pitou,
-    pub onclickok: Callback<Rc<RefCell<String>>>,
+    pub onclickok: Callback<String>,
     pub onclickcancel: Callback<()>,
 }
 
 #[function_component]
 pub fn RenamePopUp(prop: &RenamePopUpProps) -> Html {
-    let theme = use_context::<Theme>().unwrap();
+    let ApplicationContext {
+        theme,
+        sizes,
+        settings: _,
+    } = use_context::<ApplicationContext>().unwrap();
+    let input_ref = use_node_ref();
 
     let border_color = theme.spare();
     let background_color = theme.background2();
@@ -28,14 +31,12 @@ pub fn RenamePopUp(prop: &RenamePopUpProps) -> Html {
     let current_name = prop.file.name();
     let oldname = format! {"current name: {current_name}"};
 
-    let onclick = |e: MouseEvent| e.stop_immediate_propagation();
-
-    let newname = std::rc::Rc::new(std::cell::RefCell::new(String::new()));
+    let onclick = |e: MouseEvent| e.stop_propagation();
 
     let onclickok = {
+        let input_ref = input_ref.clone();
         let onclickok = prop.onclickok.clone();
-        let newname = newname.clone();
-        move |_| onclickok.emit(newname.clone())
+        move |_| onclickok.emit(input_ref.cast::<HtmlInputElement>().unwrap().value())
     };
 
     let onclickcancel = {
@@ -43,21 +44,13 @@ pub fn RenamePopUp(prop: &RenamePopUpProps) -> Html {
         move |_| onclickcancel.emit(())
     };
 
-    let oninput = {
-        let newname = newname.clone();
-        move |e: InputEvent| {
-            e.target_dyn_into::<HtmlInputElement>()
-                .map(|elem| *newname.borrow_mut() = elem.value())
-                .unwrap_or_default()
-        }
-    };
-
     let onkeypress = {
         let onclickok = prop.onclickok.clone();
-        let newname = newname.clone();
+        let input_ref = input_ref.clone();
+
         move |e: KeyboardEvent| {
             if e.key_code() == 13 {
-                onclickok.emit(newname.clone())
+                onclickok.emit(input_ref.cast::<HtmlInputElement>().unwrap().value())
             }
         }
     };
@@ -81,7 +74,7 @@ pub fn RenamePopUp(prop: &RenamePopUpProps) -> Html {
     html! {
         <div {style} class = {"popup"} {onclick}>
             <p>{ oldname }</p>
-            <input type="text" {oninput} {placeholder} {onkeypress} />
+            <input type="text" {placeholder} {onkeypress} ref = {input_ref}/>
             <div>
                 <input type="checkbox"/>
                 <span>{ "Override Existing" }</span>

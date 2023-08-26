@@ -101,6 +101,26 @@ impl Pitou {
         })
     }
 
+    pub async fn children_dirs(&self) -> io::Result<Vec<Pitou>> {
+        if self.path().as_os_str().len() == 0 {
+            return Ok(drives().into_iter().map(|drive| drive.into()).collect());
+        }
+
+        let mut read_dir = fs::read_dir(self.path()).await?;
+        let mut res: Vec<Pitou> = Vec::new();
+        while let Some(entry) = read_dir.next_entry().await? {
+            if entry
+                .file_type()
+                .await
+                .map(|ft| ft.is_dir())
+                .unwrap_or(false)
+            {
+                res.push(entry.path().into())
+            }
+        }
+        Ok(res)
+    }
+
     pub async fn children(&self) -> io::Result<Vec<Pitou>> {
         if self.path().as_os_str().len() == 0 {
             return Ok(drives().into_iter().map(|drive| drive.into()).collect());
@@ -117,7 +137,7 @@ impl Pitou {
     pub async fn siblings(&self) -> io::Result<Vec<Pitou>> {
         let path = match self.path().parent() {
             Some(v) => v,
-            None => return Ok(Vec::new()),
+            None => return Ok(drives().into_iter().map(|d| d.into()).collect()),
         };
 
         let pitou: Pitou = PathBuf::from(path).into();

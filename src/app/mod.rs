@@ -1,6 +1,5 @@
-use backend::Pitou;
+use backend::{Pitou, SearchOptions};
 use serde::Serialize;
-//use serde_wasm_bindgen::*;
 use wasm_bindgen::prelude::*;
 use yew::prelude::*;
 
@@ -29,34 +28,73 @@ pub(crate) struct PitouAndNameArgs<'a> {
 #[derive(Serialize)]
 pub(crate) struct PitouNoArg;
 
+#[derive(Serialize)]
+pub(crate) struct PitouSearchArgs<'a> {
+    key: &'a String,
+    pitou: &'a Pitou,
+    options: SearchOptions,
+}
+
 mod components;
 mod cview;
 mod home;
 mod pitou;
+mod search;
 mod settings;
 mod view;
+
+pub mod data;
+pub mod tasks;
 
 pub use components::*;
 pub use cview::*;
 pub use home::*;
 pub use pitou::*;
+pub use search::*;
 pub use settings::*;
 pub use view::*;
 
 #[function_component]
 pub fn App() -> Html {
-    let settings = use_state(|| Settings::DEFAULT);
+    let application_ctx = use_state(|| {
+        let sizes = {
+            let window = web_sys::window().unwrap();
+
+            let screen = window.screen().unwrap();
+
+            let screen_height = screen.avail_height().unwrap() - 23;
+            let screen_width = screen.avail_width().unwrap();
+
+            Sizes {
+                screen_height,
+                screen_width,
+            }
+        };
+
+        let settings = Settings::DEFAULT;
+        let theme = Theme::DEFAULT;
+
+        ApplicationContext {
+            theme,
+            settings,
+            sizes,
+        }
+    });
+
+    let updateview = {
+        let application_ctx = application_ctx.clone();
+        move |newview| {
+            let mut newctx = *application_ctx;
+            newctx.settings.view = newview;
+            crate::app::data::selections::clear();
+            application_ctx.set(newctx)
+        }
+    };
 
     html! {
-        <ContextProvider<Theme> context = { Theme::DEFAULT }>
-        {
-            match settings.view() {
-                AppView::Content => html! { <ContentView/> },
-                AppView::Opening => html! { <h1>{"Hello Opening View"}</h1> },
-                AppView::Settings => html! { <h1>{"Hello Settings"}</h1> },
-            }
-        }
-        </ContextProvider<Theme>>
+        <ContextProvider<ApplicationContext> context = { *application_ctx }>
+            <ContentView {updateview}/>
+        </ContextProvider<ApplicationContext>>
     }
 }
 

@@ -6,6 +6,260 @@ pub struct Theme {
     spare: Color,
 }
 
+pub struct Width {
+    pub value: i32,
+}
+
+impl From<i32> for Width {
+    fn from(value: i32) -> Self {
+        Width { value }
+    }
+}
+
+pub struct Height {
+    pub value: i32,
+}
+
+impl From<i32> for Height {
+    fn from(value: i32) -> Self {
+        Height { value }
+    }
+}
+
+impl std::fmt::Display for Width {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "width: {}px;", self.value)
+    }
+}
+
+impl std::fmt::Display for Height {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "height: {}px;", self.value)
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct Rectangle {
+    pub width: i32,
+    pub height: i32,
+}
+
+impl Rectangle {
+    pub fn width(self) -> Width {
+        Width { value: self.width }
+    }
+
+    pub fn height(self) -> Height {
+        Height { value: self.height }
+    }
+}
+
+impl std::fmt::Display for Rectangle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "width: {}px;\nheight: {}px;", self.width, self.height)
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct Sizes {
+    pub(crate) screen_width: i32,
+    pub(crate) screen_height: i32,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct ApplicationContext {
+    pub(crate) theme: Theme,
+    pub(crate) sizes: Sizes,
+    pub(crate) settings: Settings,
+}
+
+impl Sizes {
+    // leftbar width and height
+    pub fn screen(self) -> Rectangle {
+        let width = self.screen_width;
+        let height = self.screen_height;
+
+        Rectangle { width, height }
+    }
+
+    pub fn middle_portion(self) -> Rectangle {
+        let width = self.screen_width;
+        let height = (87 * self.screen_height) / 100;
+
+        Rectangle { width, height }
+    }
+
+    pub fn menubar(self) -> Rectangle {
+        let width = self.screen_width / 25;
+        let height = (87 * self.screen_height) / 100;
+
+        Rectangle { width, height }
+    }
+
+    pub fn menu_item_icon(self) -> Rectangle {
+        let width = 3 * self.screen_width / 100;
+        let height = 6 * self.screen_height / 100;
+
+        Rectangle { width, height }
+    }
+
+    pub fn menu_item(self) -> Rectangle {
+        let width = self.screen_width / 25;
+        let height = self.screen_height / 12;
+
+        Rectangle { width, height }
+    }
+
+    pub fn toolbar(self) -> Rectangle {
+        let width = self.screen_width;
+        let height = (8 * self.screen_height) / 100;
+
+        Rectangle { width, height }
+    }
+
+    pub fn pane(self) -> Rectangle {
+        let width = (24 * self.screen_width) / 25;
+        let height = (87 * self.screen_height) / 100;
+
+        Rectangle { width, height }
+    }
+
+    pub fn choosedir(self) -> Width {
+        let width = (3 * self.screen_width) / 200;
+
+        width.into()
+    }
+
+    pub fn searchpane(self) -> Rectangle {
+        let width = (20 * self.screen_width) / 25;
+        let height = (87 * self.screen_height) / 100;
+
+        Rectangle { width, height }
+    }
+
+    pub fn split_pane(self) -> Rectangle {
+        let width = (24 * self.screen_width) / 12;
+        let height = (83 * self.screen_height) / 100;
+
+        Rectangle { width, height }
+    }
+
+    pub fn mainpane(self) -> Rectangle {
+        let width = (20 * self.screen_width) / 25;
+        let height = (83 * self.screen_height) / 100;
+
+        Rectangle { width, height }
+    }
+
+    pub fn sidepane_possible_button(self) -> Rectangle {
+        let width = (2 * self.screen_width) / 25;
+        let height = (4 * self.screen_height) / 100;
+
+        Rectangle { width, height }
+    }
+
+    pub fn sidepane(self) -> Rectangle {
+        let width = (4 * self.screen_width) / 25;
+        let height = (83 * self.screen_height) / 100;
+
+        Rectangle { width, height }
+    }
+
+    pub fn ancestorspane(self) -> Rectangle {
+        let width = (24 * self.screen_width) / 25;
+        let height = (4 * self.screen_height) / 100;
+
+        Rectangle { width, height }
+    }
+
+    pub fn ancestorsbar(self) -> Rectangle {
+        let width = (24 * self.screen_width) / 25;
+        let height = (3 * self.screen_height) / 100;
+
+        Rectangle { width, height }
+    }
+
+    pub fn bottombar(self) -> Rectangle {
+        let width = self.screen_width;
+        let height = (5 * self.screen_height) / 100;
+
+        Rectangle { width, height }
+    }
+
+    pub fn dsc(self) -> Rectangle {
+        let height = (3 * self.screen_height) / 100;
+        let width = (20 * self.screen_width) / 25;
+
+        Rectangle { width, height }
+    }
+
+    pub fn row(self) -> Height {
+        let height = (6 * self.screen_height) / 100;
+
+        height.into()
+    }
+
+    pub fn grid(self) -> Rectangle {
+        let height = (3 * self.screen_height) / 50;
+        let width = self.screen_width / 25;
+
+        Rectangle { width, height }
+    }
+
+    pub fn row_icon(self) -> Width {
+        let width = self.screen_width / 25;
+        width.into()
+    }
+
+    pub fn row_namefield(self) -> Width {
+        let width = (9 * self.screen_width) / 25;
+        width.into()
+    }
+
+    pub fn row_checkbox(self) -> Width {
+        let width = self.screen_width / 25;
+        width.into()
+    }
+
+    pub fn row_typefield(self) -> Width {
+        let width = (4 * self.screen_width) / 25;
+        width.into()
+    }
+
+    pub fn row_sparefield(self) -> Width {
+        let width = (5 * self.screen_width) / 25;
+        width.into()
+    }
+
+    pub fn toolbar_item(self) -> Rectangle {
+        let width = self.screen_width / 25;
+        let height = (8 * self.screen_height) / 25;
+
+        Rectangle { width, height }
+    }
+
+    pub fn toolbar_icon(self) -> Rectangle {
+        let width = self.screen_width / 25;
+        let height = (6 * self.screen_height) / 100;
+
+        Rectangle { width, height }
+    }
+
+    pub fn toolbar_icon_img(self) -> Rectangle {
+        let width = self.screen_width / 25;
+        let height = (5 * self.screen_height) / 100;
+
+        Rectangle { width, height }
+    }
+
+    pub fn toolbar_namefield(self) -> Rectangle {
+        let width = self.screen_width / 25;
+        let height = (2 * self.screen_height) / 100;
+
+        Rectangle { width, height }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Color(u8, u8, u8);
 
@@ -45,10 +299,11 @@ impl Theme {
     }
 }
 
-#[allow(unused)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Settings {
-    view: AppView,
-    theme: Theme,
+    pub(crate) view: AppView,
+    /// How many times to refresh in 1 minute max = 255
+    pub(crate) refresh_rate: u8,
 }
 
 impl Default for Settings {
@@ -60,8 +315,8 @@ impl Default for Settings {
 #[allow(dead_code)]
 impl Settings {
     pub const DEFAULT: Settings = Settings {
-        view: AppView::Content,
-        theme: Theme::DEFAULT,
+        view: AppView::Explorer,
+        refresh_rate: 250,
     };
 
     pub fn settings_or_default() -> Self {
@@ -70,16 +325,17 @@ impl Settings {
     pub fn view(&self) -> AppView {
         self.view
     }
-
-    pub fn theme(&self) -> Theme {
-        self.theme
-    }
 }
 
 #[allow(unused)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum AppView {
-    Content,
-    Opening,
+    Explorer,
+    Home,
     Settings,
+    Search,
+    History,
+    Bookmarks,
+    Locked,
+    Cloud,
 }

@@ -1,16 +1,14 @@
-use std::{cell::RefCell, rc::Rc};
-
 use backend::Pitou;
 use serde::Serialize;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
-use crate::app::Theme;
+use crate::app::ApplicationContext;
 
 #[derive(PartialEq, Properties)]
 pub struct NewFilePopUpProps {
     pub directory: Pitou,
-    pub onclickok: Callback<Rc<RefCell<String>>>,
+    pub onclickok: Callback<String>,
     pub onclickcancel: Callback<()>,
 }
 
@@ -22,7 +20,12 @@ struct NewFileArgs<'a> {
 
 #[function_component]
 pub fn NewFilePopUp(prop: &NewFilePopUpProps) -> Html {
-    let theme = use_context::<Theme>().unwrap();
+    let ApplicationContext {
+        theme,
+        sizes,
+        settings: _,
+    } = use_context::<ApplicationContext>().unwrap();
+    let input_ref = use_node_ref();
 
     let border_color = theme.spare();
     let background_color = theme.background2();
@@ -35,23 +38,12 @@ pub fn NewFilePopUp(prop: &NewFilePopUpProps) -> Html {
     let folder_name = prop.directory.name();
     let oldname = format! {"Create new file in: {folder_name}"};
 
-    let filename = Rc::new(RefCell::new(String::new()));
-
-    let oninput = {
-        let filename = filename.clone();
-        move |e: InputEvent| {
-            e.target_dyn_into::<HtmlInputElement>()
-                .map(|elem| *filename.borrow_mut() = elem.value())
-                .unwrap_or_default()
-        }
-    };
-
-    let onclick = |e: MouseEvent| e.stop_immediate_propagation();
+    let onclick = |e: MouseEvent| e.stop_propagation();
 
     let onclickok = {
         let onclickok = prop.onclickok.clone();
-        let filename = filename.clone();
-        move |_| onclickok.emit(filename.clone())
+        let input_ref = input_ref.clone();
+        move |_| onclickok.emit(input_ref.cast::<HtmlInputElement>().unwrap().value())
     };
 
     let onclickcancel = {
@@ -61,10 +53,10 @@ pub fn NewFilePopUp(prop: &NewFilePopUpProps) -> Html {
 
     let onkeypress = {
         let onclickok = prop.onclickok.clone();
-        let filename = filename.clone();
+        let input_ref = input_ref.clone();
         move |e: KeyboardEvent| {
             if e.key_code() == 13 {
-                onclickok.emit(filename.clone())
+                onclickok.emit(input_ref.cast::<HtmlInputElement>().unwrap().value())
             }
         }
     };
@@ -88,7 +80,7 @@ pub fn NewFilePopUp(prop: &NewFilePopUpProps) -> Html {
     html! {
         <div {style} class = {"popup"} {onclick}>
             <p>{ oldname }</p>
-            <input type="text" {oninput} {placeholder} {onkeypress} />
+            <input type="text" {placeholder} {onkeypress} ref = {input_ref}/>
             <div>
                 <input type="checkbox"/>
                 <span>{ "Override Existing" }</span>
