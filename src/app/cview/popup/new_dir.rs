@@ -1,12 +1,12 @@
-use backend::Pitou;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
 use crate::app::ApplicationContext;
+use std::{rc::Rc, path::PathBuf};
 
 #[derive(PartialEq, Properties)]
 pub struct NewDirPopUpProps {
-    pub directory: Pitou,
+    pub directory: Rc<PathBuf>,
     pub onclickcancel: Callback<()>,
     pub onclickok: Callback<String>,
 }
@@ -15,9 +15,9 @@ pub struct NewDirPopUpProps {
 pub fn NewDirPopUp(prop: &NewDirPopUpProps) -> Html {
     let ApplicationContext {
         theme,
-        sizes,
+        sizes: _,
         settings: _,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
     let input_ref = use_node_ref();
 
     let border_color = theme.spare();
@@ -28,7 +28,7 @@ pub fn NewDirPopUp(prop: &NewDirPopUpProps) -> Html {
     border: 2px solid {border_color};
     "};
 
-    let folder_name = prop.directory.name();
+    let folder_name = prop.directory.file_name().map(|v| v.to_str().unwrap_or_default()).unwrap_or_default();
     let oldname = format! {"Create new folder in: {folder_name}"};
     let onclick = |e: MouseEvent| e.stop_propagation();
 

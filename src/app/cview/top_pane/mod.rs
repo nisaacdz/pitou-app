@@ -16,7 +16,7 @@ pub struct TopPaneProps {
 
 #[function_component]
 pub fn TopPane(prop: &TopPaneProps) -> Html {
-    let ApplicationContext { theme, sizes, settings: _ } = use_context::<ApplicationContext>().unwrap();
+    let ApplicationContext { theme, sizes, settings: _ } = use_context().unwrap();
     let pitou = prop.pitou.clone();
 
     let background_color = theme.background1();

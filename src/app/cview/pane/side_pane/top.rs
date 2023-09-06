@@ -1,4 +1,5 @@
-use backend::Pitou;
+use std::{rc::Rc, path::PathBuf};
+
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
@@ -6,7 +7,7 @@ use crate::app::ApplicationContext;
 
 #[derive(PartialEq, Properties)]
 pub struct TopOfParentDirProps {
-    pub selected: Option<Pitou>,
+    pub selected: Option<Rc<PathBuf>>,
     pub onfilter: Callback<String>,
     pub onenter: Callback<String>,
 }
@@ -17,7 +18,7 @@ pub fn TopOfParentDir(prop: &TopOfParentDirProps) -> Html {
         theme: _,
         sizes,
         settings: _,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
     let input = use_state(|| String::new());
 
     {
@@ -43,7 +44,7 @@ pub fn TopOfParentDir(prop: &TopOfParentDirProps) -> Html {
     let placeholder = prop
         .selected
         .as_ref()
-        .map(|item| item.name())
+        .map(|item| PathBuf::from(item.file_name().unwrap_or_default()).display().to_string())
         .unwrap_or_default();
 
     let onsubmit = {

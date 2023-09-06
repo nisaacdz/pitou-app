@@ -14,7 +14,7 @@ pub fn RowDescriptor(prop: &RowDescriptorProps) -> Html {
         theme,
         sizes,
         settings: _,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
 
     let ontoggle = {
         let toggleselectall = prop.toggleselectall.clone();
@@ -32,7 +32,6 @@ pub fn RowDescriptor(prop: &RowDescriptorProps) -> Html {
     {height}
     width: 100%;
     background-color: {background_color};
-    box-sizing: border-box;
     "};
 
     html! {
@@ -58,9 +57,9 @@ pub fn CheckBox(prop: &CheckBoxProps) -> Html {
         theme: _,
         sizes,
         settings: _,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
 
-    let onclick = {
+    let onchange = {
         let ontoggle = prop.ontoggle.clone();
 
         move |_| {
@@ -80,7 +79,7 @@ pub fn CheckBox(prop: &CheckBoxProps) -> Html {
 
     html! {
         <div {style}>
-            <input type = "checkbox" {onclick} checked = { prop.ischecked }/>
+            <input type = "checkbox" {onchange} checked = { prop.ischecked }/>
         </div>
     }
 }
@@ -91,7 +90,7 @@ fn FileTypeDescriptor() -> Html {
         theme: _,
         sizes,
         settings: _,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
 
     let width = sizes.row_typefield();
 
@@ -115,7 +114,7 @@ fn NameDescriptor() -> Html {
         theme: _,
         sizes,
         settings: _,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
 
     let width = sizes.row_namefield();
 
@@ -139,7 +138,7 @@ fn Ico() -> Html {
         theme: _,
         sizes,
         settings: _,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
 
     let width = sizes.row_icon();
 
@@ -164,7 +163,7 @@ fn LastModifiedDescriptor() -> Html {
         theme: _,
         sizes,
         settings: _,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
 
     let width = sizes.row_sparefield();
 

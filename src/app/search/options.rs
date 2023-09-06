@@ -5,38 +5,6 @@ use backend::{KeyType, SearchArea, SearchOptions};
 use web_sys::{HtmlInputElement, HtmlSelectElement};
 
 #[derive(PartialEq, Properties)]
-pub struct SearchOptionsCmpCollapsedProp {
-    pub onclick: Callback<()>,
-}
-
-#[function_component]
-pub fn SearchOptionsCmpCollapsed(prop: &SearchOptionsCmpCollapsedProp) -> Html {
-    let style = format! {"
-    width: 30px;
-    height: 30px;
-    background-color: transparent;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    "};
-
-    let onclick = {
-        let onclick = prop.onclick.clone();
-        move |_| onclick.emit(())
-    };
-
-    html! {
-        <div {style} {onclick}>
-            <div class="three-dots" id="three-dots">
-                <div class="dot"></div>
-                <div class="dot"></div>
-                <div class="dot"></div>
-            </div>
-        </div>
-    }
-}
-
-#[derive(PartialEq, Properties)]
 pub struct SearchOptionsCmpProp {
     pub onsubmit: Callback<(String, SearchOptions)>,
     //collapse: Callback<()>,
@@ -48,7 +16,7 @@ pub fn SearchOptionsCmp(prop: &SearchOptionsCmpProp) -> Html {
         theme,
         sizes,
         settings: _,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
     let options = use_state_eq(|| SearchOptions::new());
     let input_ref = use_node_ref();
 
@@ -56,19 +24,23 @@ pub fn SearchOptionsCmp(prop: &SearchOptionsCmpProp) -> Html {
     let border_color = theme.spare();
 
     let size = sizes.sidepane();
-    let input_height = sizes.dsc().height();
+    let input_sz = sizes.search_input();
 
     let input_style = format! {"
-    {input_height}
+    border: 3px solid {border_color};
+    {input_sz}
+    box-sizing: border-box;
+    "};
+
+    let base_box_style = format! {"
+    border: 3px solid {border_color};
     "};
 
     let style = format! {"
     display: flex;
     flex-direction: column;
-    padding-left: 10px;
-    padding-right: 10px;
-    gap: 10px;
     align-items: center;
+    gap: 10px;
     {size}
     background-color: {background_color};
     border: 1px solid {border_color};
@@ -78,9 +50,10 @@ pub fn SearchOptionsCmp(prop: &SearchOptionsCmpProp) -> Html {
     let button_background_color = theme.background1();
     let button_size = sizes.sidepane_possible_button();
     let button_text_color = theme.foreground1();
+
     let submit_button_style = format! {"
     background-color: {button_background_color};
-    color: {button_text_color}
+    color: {button_text_color};
     {button_size}
     "};
 
@@ -138,8 +111,6 @@ pub fn SearchOptionsCmp(prop: &SearchOptionsCmpProp) -> Html {
         move |_| options.set(options.toggle_include_links())
     };
 
-    gloo::console::log!(format! {"{}", (*options).keytype});
-
     let entries = {
         let onchange = {
             let options = options.clone();
@@ -163,7 +134,7 @@ pub fn SearchOptionsCmp(prop: &SearchOptionsCmpProp) -> Html {
                 <div class="search-type">
                     <label>
                         {"Standard Search Type:"}
-                        <select class="select-box" value={format!{"{}", rt}} {onchange}>
+                        <select class="select-box" value={format!{"{}", rt}} {onchange} style = {base_box_style.clone()}>
                             <option selected = {matches!(rt, SearchArea::StartsWith )}>{"StartsWith"}</option>
                             <option selected = {matches!(rt, SearchArea::Contains )}>{"Contains"}</option>
                             <option selected = {matches!(rt, SearchArea::EndsWith )}>{"EndsWith"}</option>
@@ -178,15 +149,13 @@ pub fn SearchOptionsCmp(prop: &SearchOptionsCmpProp) -> Html {
 
     html! {
         <div class="search-options" style={style}>
-            <div class="input-container" style={input_style}>
-                <input class="search-input" type="text" ref={input_ref} {placeholder}/>
-            </div>
+            <input style={input_style} class="search-input" type="text" ref={input_ref} {placeholder}/>
             <span class="title">{"Search Options"}</span>
             <form {onsubmit}>
                 <div class="form-item">
                     <label>
                         {"Type:"}
-                        <select class="select-box" {onchange}>
+                        <select class="select-box" style = {base_box_style} {onchange}>
                             <option selected = {matches!{(*options).keytype, KeyType::RawSearch(_)}}>{"Standard"}</option>
                             <option selected = {matches!{(*options).keytype, KeyType::Regex}}>{"Regex"}</option>
                         </select>
@@ -219,7 +188,7 @@ pub fn SearchOptionsCmp(prop: &SearchOptionsCmpProp) -> Html {
                 </div>
                 <div class="form-item">
                     <label>
-                        {"Include Symlink Files:"}
+                        {"Include Shortcuts:"}
                         <input class="checkbox-input" type="checkbox" checked={(&*options).include_links} onchange={toggleincludelinks} />
                     </label>
                 </div>

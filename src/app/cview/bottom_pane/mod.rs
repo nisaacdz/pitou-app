@@ -11,7 +11,7 @@ pub fn BottomPane() -> Html {
         theme,
         sizes,
         settings: _,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
 
     let background_color = theme.background1();
     let size = sizes.bottombar();
@@ -19,6 +19,7 @@ pub fn BottomPane() -> Html {
     let style = format! {"
     {size}
     background-color: {background_color};
+    box-sizing: border-box;
     "};
 
     let inner_style = format! {"

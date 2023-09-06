@@ -4,14 +4,6 @@ use crate::{
     app::{AppView, ApplicationContext},
     background_color,
 };
-use backend::Pitou;
-
-#[derive(PartialEq, Properties)]
-struct LeftPaneMembersProps {
-    pitou: Pitou,
-    onclick: Callback<()>,
-    onhover: Callback<()>,
-}
 
 #[derive(PartialEq, Properties)]
 pub struct LeftPaneProps {
@@ -24,12 +16,15 @@ pub fn LeftPane(prop: &LeftPaneProps) -> Html {
         theme,
         sizes,
         settings: _,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
     let background_color = theme.background1();
     let size = sizes.menubar();
     let border_color = theme.spare();
+    let foreground_color = theme.foreground1();
 
     let style = format! {"
+    --tooltip-background: {background_color};
+    --tooltip-foreground: {foreground_color};
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -43,7 +38,7 @@ pub fn LeftPane(prop: &LeftPaneProps) -> Html {
         <div {style}>
             <BackButton />
             <ExploreButton updateview = {prop.updateview.clone()}/>
-            <HomeButton />
+            <HomeButton updateview = {prop.updateview.clone()}/>
             <SearchButton updateview = {prop.updateview.clone()}/>
             <HistoryButton />
             <BookmarksButton />
@@ -55,14 +50,15 @@ pub fn LeftPane(prop: &LeftPaneProps) -> Html {
 }
 
 #[function_component]
-pub fn BackButton() -> Html {
+fn BackButton() -> Html {
     let ApplicationContext {
         theme: _,
         sizes,
         settings: _,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
 
-    let outer_size = sizes.menu_item();
+    let mut outer_size = sizes.menu_item();
+    outer_size.width -= 2;
     let icon_style = sizes.menu_item_icon();
 
     let style = format! {"
@@ -71,6 +67,7 @@ pub fn BackButton() -> Html {
     flex-direction: row;
     align-items: center;
     justify-content: center;
+    position: relative;
     "};
 
     let icon_style = format! {"
@@ -78,8 +75,8 @@ pub fn BackButton() -> Html {
     "};
 
     html! {
-        <div {style}>
-            <img class = "card" style = {icon_style} src="./public/icons/side/back_arrow.png" alt="back"/>
+        <div {style} class = "menu_icon" tooltip = "back">
+            <img class = "card" style = {icon_style} src="./public/icons/side/back_arrow.png"/>
         </div>
     }
 }
@@ -90,9 +87,10 @@ fn ExploreButton(prop: &ButtonProp) -> Html {
         theme,
         sizes,
         settings,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
 
-    let outer_size = sizes.menu_item();
+    let mut outer_size = sizes.menu_item();
+    outer_size.width -= 2;
     let icon_style = sizes.menu_item_icon();
 
     let background_color = background_color!(
@@ -106,6 +104,7 @@ fn ExploreButton(prop: &ButtonProp) -> Html {
     flex-direction: row;
     align-items: center;
     justify-content: center;
+    position: relative;
     {background_color}
     "};
 
@@ -119,24 +118,31 @@ fn ExploreButton(prop: &ButtonProp) -> Html {
     };
 
     html! {
-        <div {style}>
-            <img {onclick} class = "card" style = {icon_style} src="./public/icons/side/explorer.png" alt="explorer"/>
+        <div {style} class = "menu_icon" tooltip = "explorer">
+            <img {onclick} class = "card" style = {icon_style} src="./public/icons/side/explorer.png"/>
         </div>
     }
 }
 
 #[function_component]
-pub fn HomeButton() -> Html {
+fn HomeButton(prop: &ButtonProp) -> Html {
     let ApplicationContext {
         theme,
         sizes,
         settings,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
 
     let background_color =
         background_color!(matches!(settings.view, AppView::Home), theme.background2());
 
-    let outer_size = sizes.menu_item();
+    let onclick = {
+        let updateview = prop.updateview.clone();
+        move |_| updateview.emit(AppView::Home)
+    };
+
+    let mut outer_size = sizes.menu_item();
+    outer_size.width -= 2;
+
     let icon_style = sizes.menu_item_icon();
 
     let style = format! {"
@@ -145,6 +151,7 @@ pub fn HomeButton() -> Html {
     flex-direction: row;
     align-items: center;
     justify-content: center;
+    position: relative;
     {background_color}
     "};
 
@@ -153,26 +160,27 @@ pub fn HomeButton() -> Html {
     "};
 
     html! {
-        <div {style}>
-            <img class = "card" style = {icon_style} src="./public/icons/side/home.png" alt="home"/>
+        <div {style} class = "menu_icon" tooltip = "home">
+            <img {onclick} class = "card" style = {icon_style} src="./public/icons/side/home.png"/>
         </div>
     }
 }
 
 #[function_component]
-pub fn SettingsButton() -> Html {
+fn SettingsButton() -> Html {
     let ApplicationContext {
         theme,
         sizes,
         settings,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
 
     let background_color = background_color!(
         matches!(settings.view, AppView::Settings),
         theme.background2()
     );
 
-    let outer_size = sizes.menu_item();
+    let mut outer_size = sizes.menu_item();
+    outer_size.width -= 2;
     let icon_style = sizes.menu_item_icon();
 
     let style = format! {"
@@ -181,6 +189,7 @@ pub fn SettingsButton() -> Html {
     flex-direction: row;
     align-items: center;
     justify-content: center;
+    position: relative;
     {background_color}
     "};
 
@@ -189,26 +198,27 @@ pub fn SettingsButton() -> Html {
     "};
 
     html! {
-        <div {style}>
-            <img class = "card" style = {icon_style} src="./public/icons/side/settings.png" alt="settings"/>
+        <div {style} class = "menu_icon" tooltip = "settings">
+            <img class = "card" style = {icon_style} src="./public/icons/side/settings.png"/>
         </div>
     }
 }
 
 #[function_component]
-pub fn HistoryButton() -> Html {
+fn HistoryButton() -> Html {
     let ApplicationContext {
         theme,
         sizes,
         settings,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
 
     let background_color = background_color!(
         matches!(settings.view, AppView::History),
         theme.background2()
     );
 
-    let outer_size = sizes.menu_item();
+    let mut outer_size = sizes.menu_item();
+    outer_size.width -= 2;
     let icon_style = sizes.menu_item_icon();
 
     let style = format! {"
@@ -217,6 +227,7 @@ pub fn HistoryButton() -> Html {
     flex-direction: row;
     align-items: center;
     justify-content: center;
+    position: relative;
     {background_color}
     "};
 
@@ -225,26 +236,27 @@ pub fn HistoryButton() -> Html {
     "};
 
     html! {
-        <div {style}>
-            <img class = "card" style = {icon_style} src="./public/icons/side/history.png" alt="history"/>
+        <div {style} class = "menu_icon" tooltip = "history">
+            <img class = "card" style = {icon_style} src="./public/icons/side/history.png"/>
         </div>
     }
 }
 
 #[function_component]
-pub fn BookmarksButton() -> Html {
+fn BookmarksButton() -> Html {
     let ApplicationContext {
         theme,
         sizes,
         settings,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
 
     let background_color = background_color!(
         matches!(settings.view, AppView::Bookmarks),
         theme.background2()
     );
 
-    let outer_size = sizes.menu_item();
+    let mut outer_size = sizes.menu_item();
+    outer_size.width -= 2;
     let icon_style = sizes.menu_item_icon();
 
     let style = format! {"
@@ -253,6 +265,7 @@ pub fn BookmarksButton() -> Html {
     flex-direction: row;
     align-items: center;
     justify-content: center;
+    position: relative;
     {background_color}
     "};
 
@@ -261,24 +274,25 @@ pub fn BookmarksButton() -> Html {
     "};
 
     html! {
-        <div {style}>
-            <img class = "card" style = {icon_style} src="./public/icons/side/bookmark.png" alt="bookmarks"/>
+        <div {style} class = "menu_icon" tooltip = "bookmarks">
+            <img class = "card" style = {icon_style} src="./public/icons/side/bookmark.png"/>
         </div>
     }
 }
 
 #[function_component]
-pub fn CloudButton() -> Html {
+fn CloudButton() -> Html {
     let ApplicationContext {
         theme,
         sizes,
         settings,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
 
     let background_color =
         background_color!(matches!(settings.view, AppView::Cloud), theme.background2());
 
-    let outer_size = sizes.menu_item();
+    let mut outer_size = sizes.menu_item();
+    outer_size.width -= 2;
     let icon_style = sizes.menu_item_icon();
 
     let style = format! {"
@@ -287,6 +301,7 @@ pub fn CloudButton() -> Html {
     flex-direction: row;
     align-items: center;
     justify-content: center;
+    position: relative;
     {background_color}
     "};
 
@@ -295,26 +310,27 @@ pub fn CloudButton() -> Html {
     "};
 
     html! {
-        <div {style}>
-            <img class = "card" style = {icon_style} src="./public/icons/side/cloud_dir.png" alt="cloud"/>
+        <div {style} class = "menu_icon" tooltip = "cloud">
+            <img class = "card" style = {icon_style} src="./public/icons/side/cloud_dir.png"/>
         </div>
     }
 }
 
 #[function_component]
-pub fn LockedButton() -> Html {
+fn LockedButton() -> Html {
     let ApplicationContext {
         theme,
         sizes,
         settings,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
 
     let background_color = background_color!(
         matches!(settings.view, AppView::Locked),
         theme.background2()
     );
 
-    let outer_size = sizes.menu_item();
+    let mut outer_size = sizes.menu_item();
+    outer_size.width -= 2;
     let icon_style = sizes.menu_item_icon();
 
     let style = format! {"
@@ -323,6 +339,7 @@ pub fn LockedButton() -> Html {
     flex-direction: row;
     align-items: center;
     justify-content: center;
+    position: relative;
     {background_color}
     "};
 
@@ -331,8 +348,8 @@ pub fn LockedButton() -> Html {
     "};
 
     html! {
-        <div {style}>
-            <img class = "card" style = {icon_style} src="./public/icons/side/locked.png" alt="locked"/>
+        <div {style} class = "menu_icon" tooltip = "locked">
+            <img class = "card" style = {icon_style} src="./public/icons/side/locked.png"/>
         </div>
     }
 }
@@ -343,14 +360,15 @@ fn SearchButton(prop: &ButtonProp) -> Html {
         theme,
         sizes,
         settings,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
 
     let background_color = background_color!(
         matches!(settings.view, AppView::Search),
         theme.background2()
     );
 
-    let outer_size = sizes.menu_item();
+    let mut outer_size = sizes.menu_item();
+    outer_size.width -= 2;
     let icon_style = sizes.menu_item_icon();
 
     let style = format! {"
@@ -359,6 +377,7 @@ fn SearchButton(prop: &ButtonProp) -> Html {
     flex-direction: row;
     align-items: center;
     justify-content: center;
+    position: relative;
     {background_color}
     "};
 
@@ -373,8 +392,8 @@ fn SearchButton(prop: &ButtonProp) -> Html {
     };
 
     html! {
-        <div {style}>
-            <img  {onclick} style = {icon_style} class = "card" src="./public/icons/top/search.png" alt="search" />
+        <div {style} class = "menu_icon" tooltip = "search">
+            <img class = "card" {onclick} style = {icon_style} src="./public/icons/top/search.png"/>
         </div>
     }
 }

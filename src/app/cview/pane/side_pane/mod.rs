@@ -1,4 +1,6 @@
-use backend::Pitou;
+use backend::{File, PitouType};
+use wasm_bindgen_futures::spawn_local;
+use std::path::PathBuf;
 use yew::prelude::*;
 
 use crate::app::{ApplicationContext, LoadingDisplay};
@@ -7,11 +9,13 @@ mod top;
 use rows::*;
 use top::*;
 
+use std::rc::Rc;
+
 #[derive(PartialEq, Properties)]
 pub struct SidePaneProps {
-    pub selected: Option<Pitou>,
-    pub siblings: Option<Vec<Pitou>>,
-    pub updatedirectory: Callback<Pitou>,
+    pub directory: Option<Rc<PathBuf>>,
+    pub siblings: Option<Rc<Vec<File>>>,
+    pub updatedirectory: Callback<PathBuf>,
 }
 
 #[function_component]
@@ -20,7 +24,7 @@ pub fn SidePane(prop: &SidePaneProps) -> Html {
         theme,
         sizes,
         settings: _,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
 
     let filter = use_state(|| None);
 
@@ -60,32 +64,52 @@ pub fn SidePane(prop: &SidePaneProps) -> Html {
 
     let onenter = {
         let updatedirectory = prop.updatedirectory.clone();
-        let selected = prop.selected.clone();
+        let selected = prop.directory.clone();
         move |newstr| {
             use std::path::PathBuf;
 
             if let Some(val) = &selected {
-                let pitou: Pitou = val
-                    .path()
-                    .parent()
+                let pitou = val.parent()
                     .map(|path| PathBuf::from(path))
                     .unwrap_or_default()
-                    .join(newstr)
-                    .into();
+                    .join(newstr);
                 updatedirectory.emit(pitou)
             }
         }
     };
 
-    let content = if let Some(pitous) = prop.siblings.as_ref() {
-        let entries = pitous
+    let onclick = Callback::from({
+        let updatedirectory = prop.updatedirectory.clone();
+
+        move |file: File|  match file.metadata().file_type() {
+                PitouType::Directory => {
+                    updatedirectory.emit(file.path().clone());
+                }
+                PitouType::File => {
+                    let file = file.clone();
+                    spawn_local(async move {
+                        crate::app::tasks::open(file.path()).await
+                    })
+                },
+                PitouType::Link => todo!(),
+            }
+    });
+
+    let is_selected = {
+        let directory = prop.directory.clone();
+
+        move |path| matches!(directory.as_ref(), Some(x) if &**x == path)
+    };
+
+    let content = if let Some(files) = prop.siblings.as_ref() {
+        let entries = files
             .iter()
             .filter(|item| {
                 use backend::StrOps;
                 filter.as_ref().map(|pat| item.name().starts_with_ignore_case(pat)).unwrap_or(true)
             })
-            .map(|pitou| (pitou.clone(), prop.updatedirectory.clone(), prop.selected.as_ref() == Some(pitou)))
-            .map(|(pitou, updatedirectory, selected)| html! { <SidePaneRow  { pitou } {updatedirectory} {selected} /> })
+            .map(|file| (file.clone(), onclick.clone(), is_selected(file.path())))
+            .map(|(file, onclick, selected)| html! { <SidePaneRow  { file } {onclick} {selected} /> })
             .collect::<Html>();
 
         html! {
@@ -103,7 +127,7 @@ pub fn SidePane(prop: &SidePaneProps) -> Html {
 
     html! {
         <div {style}>
-            <TopOfParentDir {onfilter} {onenter} selected = { prop.selected.clone() }/>
+            <TopOfParentDir {onfilter} {onenter} selected = { prop.directory.clone() }/>
             { content }
         </div>
     }

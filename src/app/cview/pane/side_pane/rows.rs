@@ -1,17 +1,15 @@
-use backend::{Metadata, Pitou};
-use serde_wasm_bindgen::{from_value, to_value};
-use wasm_bindgen_futures::spawn_local;
+use backend::File;
 use yew::prelude::*;
 
 use crate::{
-    app::{invoke, ApplicationContext, DirIcon, FileIcon, PitouArg, SymLinkIcon},
+    app::{ApplicationContext, DirIcon, FileIcon, SymLinkIcon},
     background_color,
 };
 
 #[derive(PartialEq, Properties)]
 pub struct SidePaneRowProps {
-    pub pitou: Pitou,
-    pub updatedirectory: Callback<Pitou>,
+    pub file: File,
+    pub onclick: Callback<File>,
     pub selected: bool,
 }
 
@@ -21,8 +19,7 @@ pub fn SidePaneRow(prop: &SidePaneRowProps) -> Html {
         theme,
         sizes,
         settings: _,
-    } = use_context::<ApplicationContext>().unwrap();
-    let metadata = use_state(|| None);
+    } = use_context().unwrap();
     let hovered = use_state_eq(|| false);
 
     let onmouseover = {
@@ -32,6 +29,12 @@ pub fn SidePaneRow(prop: &SidePaneRowProps) -> Html {
         }
     };
 
+    let onclick = {
+        let onclick = prop.onclick.clone();
+        let file = prop.file.clone();
+        move |_| onclick.emit(file.clone())
+    };
+
     let onmouseout = {
         let hovered = hovered.clone();
         move |_| {
@@ -39,81 +42,58 @@ pub fn SidePaneRow(prop: &SidePaneRowProps) -> Html {
         }
     };
 
-    {
-        let pitou = prop.pitou.clone();
-        let metadata = metadata.clone();
-
-        use_effect_with_deps(
-            move |_| {
-                spawn_local(async move {
-                    let arg = PitouArg { pitou: &pitou };
-                    let arg = to_value(&arg).unwrap();
-                    let res = invoke("metadata", arg).await;
-
-                    let res = from_value::<Metadata>(res).unwrap();
-                    metadata.set(Some(res));
-                })
-            },
-            (),
-        )
-    }
-
     let foreground_color = theme.foreground1();
 
     let height = sizes.row();
 
     let style = format! {"
-        display: flex;
-        {height}
-        flex-direction: row;
-        gap: 0;
-        color: {foreground_color};
-        font-family: monospace;
-        height: 10%;
-        width: 100%;
-        font-size: 100%;
-        {}
-        text-align: left;", background_color!(*hovered || prop.selected, theme.background1()) };
+    display: flex;
+    flex-shrink: 0;
+    {height}
+    gap: 0;
+    font-size: 90%;
+    color: {foreground_color};
+    font-family: monospace;
+    width: 100%;
+    {}", background_color!(*hovered || prop.selected, theme.background1()) };
 
-    let filetype = {
-        if let Some(m) = &*metadata {
-            Some(m.file_type())
-        } else {
-            None
-        }
-    };
+    let filetype = prop.file.metadata().file_type();
 
     html! {
-        <div {style} {onmouseover} {onmouseout}>
+        <div {style} {onmouseover} {onmouseout} {onclick}>
             <FileIconCmp {filetype} />
-            <SidePaneFileName pitou = { prop.pitou.clone() } updatedirectory = { prop.updatedirectory.clone() } />
+            <SidePaneFileName file = { prop.file.clone() } />
         </div>
     }
 }
 
 #[derive(PartialEq, Properties)]
 struct FileTypeProps {
-    pub filetype: Option<backend::PitouType>,
+    pub filetype: backend::PitouType,
 }
 
 #[function_component]
 fn FileIconCmp(prop: &FileTypeProps) -> Html {
+    let ApplicationContext {
+        sizes,
+        theme: _,
+        settings: _,
+    } = use_context().unwrap();
+    let width = sizes.sidepane_icon();
+
     let style = format! {"
         display: flex;
         align-items: center;
-        width: 15%;
+        {width}
         height: 100%;
         padding-left: 3%;
         justify-content: center;
     "};
 
     let icon = match prop.filetype {
-        Some(v) => match v {
-            backend::PitouType::File => html! { <FileIcon /> },
-            backend::PitouType::Directory => html! { <DirIcon /> },
-            backend::PitouType::Link => html! { <SymLinkIcon /> },
-        },
-        None => html! {},
+        backend::PitouType::File => html! { <FileIcon /> },
+        backend::PitouType::Directory => html! { <DirIcon /> },
+        backend::PitouType::Link => html! { <SymLinkIcon /> },
     };
 
     html! {
@@ -123,13 +103,12 @@ fn FileIconCmp(prop: &FileTypeProps) -> Html {
 
 #[derive(PartialEq, Properties)]
 pub struct SidePaneFileNameProps {
-    pitou: Pitou,
-    updatedirectory: Callback<Pitou>,
+    file: File,
 }
 
 #[function_component]
-pub(super) fn SidePaneFileName(prop: &SidePaneFileNameProps) -> Html {
-    let style = format! {"
+pub(super) fn UseLess() -> Html {
+    let _style = format! {"
         left: 15%;
         width: 75%;
         height: 100%;
@@ -140,15 +119,38 @@ pub(super) fn SidePaneFileName(prop: &SidePaneFileNameProps) -> Html {
         text-overflow: ellipsis;
     "};
 
-    let onclick = {
-        let pitou = prop.pitou.clone();
-        let updatedirectory = prop.updatedirectory.clone();
-        move |_| updatedirectory.emit(pitou.clone())
-    };
+    html! {}
+}
+
+#[function_component]
+pub(super) fn SidePaneFileName(prop: &SidePaneFileNameProps) -> Html {
+    let ApplicationContext {
+        theme,
+        sizes,
+        settings: _,
+    } = use_context().unwrap();
+
+    let width = sizes.sidepane_filename();
+    let foreground = theme.foreground1();
+
+    let style = format! {"
+    {width}
+    color: {foreground};
+    height: 100%;
+    "};
+
+    let inner_style = format! {"
+    left: 2%;
+    right: 2%;
+    height: 100%;"};
+
+    let name = prop.file.name().to_owned();
 
     html! {
-        <p {style} {onclick}>
-            { prop.pitou.name() }
-        </p>
+        <div {style}>
+            <div class = "filenamewrap" style = {inner_style}>
+                <span class = "filename"> { name } </span>
+            </div>
+        </div>
     }
 }

@@ -1,25 +1,18 @@
 use crate::{
-    app::{invoke, AppView, ApplicationContext, DirIcon, FileIcon, PitouArg, SymLinkIcon},
+    app::{AppView, ApplicationContext, DirIcon, FileIcon, SymLinkIcon},
     background_color,
 };
-use backend::{DateTime, Metadata, Pitou, PitouType};
-use serde_wasm_bindgen::{from_value, to_value};
-use wasm_bindgen_futures::spawn_local;
+
+use backend::{DateTime, File, PitouType};
 use yew::prelude::*;
 
 #[derive(Properties, PartialEq)]
 pub struct RowProps {
-    pub(super) pitou: Pitou,
+    pub(super) file: File,
     pub(super) idx: usize,
     pub(super) toggleselect: Callback<usize>,
-    pub(super) updatedirectory: Callback<Pitou>,
+    pub(super) ondbclick: Callback<usize>,
     pub(super) selected: bool,
-}
-
-impl RowProps {
-    fn pitou(&self) -> &Pitou {
-        &self.pitou
-    }
 }
 
 #[function_component]
@@ -28,30 +21,9 @@ pub fn Row(prop: &RowProps) -> Html {
         theme,
         sizes,
         settings: _,
-    } = use_context::<ApplicationContext>().unwrap();
-
-    let metadata = use_state(|| None);
+    } = use_context().unwrap();
 
     let is_hovered = use_state_eq(|| false);
-
-    {
-        let metadata = metadata.clone();
-        let pitou = prop.pitou.clone();
-
-        use_effect_with_deps(
-            move |_| {
-                let metadata = metadata.clone();
-                let pitou = pitou.clone();
-                spawn_local(async move {
-                    let arg = to_value(&PitouArg { pitou: &pitou }).unwrap();
-                    let val =
-                        from_value::<Option<Metadata>>(invoke("metadata", arg).await).unwrap();
-                    metadata.set(val)
-                })
-            },
-            (),
-        );
-    }
 
     let onmouseover = {
         let is_hovered = is_hovered.clone();
@@ -63,11 +35,13 @@ pub fn Row(prop: &RowProps) -> Html {
         move |_| is_hovered.set(false)
     };
 
-    let updatedirectory = {
-        let updatedirectory = prop.updatedirectory.clone();
-        let pitou = prop.pitou.clone();
+    let ondblclick = {
+        let ondbclick = prop.ondbclick.clone();
+        let idx = prop.idx;
 
-        move |_| updatedirectory.emit(pitou.clone())
+        move |_| {
+            ondbclick.emit(idx);
+        }
     };
 
     let toggleselect = {
@@ -84,44 +58,25 @@ pub fn Row(prop: &RowProps) -> Html {
 
     let style = format! {"
     display: flex;
-    flex-direction: row;
     gap: 0;
     font-size: 90%;
     {height}
     width: auto;
     {}", background_color!(prop.selected || *is_hovered, hover_background) };
 
-    let pitou = prop.pitou();
-
-    let filetype = {
-        if let Some(m) = &*metadata {
-            Some(m.file_type())
-        } else {
-            None
-        }
-    };
-
     let onclick = {
         let toggleselect = toggleselect.clone();
         move |_| toggleselect(())
     };
 
-    let lastmodified = {
-        if let Some(m) = &*metadata {
-            match m.modified() {
-                None => None,
-                Some(v) => Some(v),
-            }
-        } else {
-            None
-        }
-    };
+    let lastmodified = prop.file.metadata().modified();
+    let filetype = prop.file.metadata().file_type();
 
     html! {
-        <div {style} {onmouseover} {onmouseout} {onclick}>
+        <div {style} {onmouseover} {onmouseout} {onclick} {ondblclick}>
             <CheckBox ontoggle = {toggleselect} ischecked = { prop.selected } />
             <FileIconCmp {filetype} />
-            <FileName pitou = { pitou.clone() } {updatedirectory} />
+            <FileName file = { prop.file.clone() }/>
             <FileTypeCmp {filetype} />
             <LastModifiedCmp {lastmodified} />
         </div>
@@ -140,7 +95,7 @@ pub fn CheckBox(prop: &CheckBoxProps) -> Html {
         theme: _,
         sizes,
         settings: _,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
 
     let onclick = {
         let ontoggle = prop.ontoggle.clone();
@@ -180,7 +135,7 @@ fn FileIconCmp(prop: &FileTypeProps) -> Html {
         theme: _,
         sizes,
         settings: _,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
 
     let width = sizes.row_icon();
 
@@ -207,8 +162,7 @@ fn FileIconCmp(prop: &FileTypeProps) -> Html {
 
 #[derive(PartialEq, Properties)]
 pub struct FileNameProps {
-    pub pitou: Pitou,
-    pub updatedirectory: Callback<()>,
+    pub file: File,
 }
 
 #[function_component]
@@ -217,37 +171,34 @@ fn FileName(prop: &FileNameProps) -> Html {
         theme,
         sizes,
         settings,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
 
     let width = sizes.row_namefield();
 
     let foreground = theme.foreground1();
-    let style = format! {"
-    display: flex;
-    flex-direction: row-reverse;
-    overflow: hidden;
-    align-items: center;
-    justify-content: left;
-    padding-left: 2%;
-    {width}
-    height: 100%;
-    color: {foreground};"};
 
-    let ondblclick = {
-        let update_directory = prop.updatedirectory.clone();
-        move |me: MouseEvent| {
-            me.cancel_bubble();
-            update_directory.emit(())
-        }
-    };
+    let style = format! {"
+    {width}
+    color: {foreground};
+    height: 100%;
+    "};
+
+    let inner_style = format! {"
+    left: 2%;
+    right: 2%;
+    height: 100%;"};
 
     let value = match settings.view {
-        AppView::Search => prop.pitou.path().display().to_string(),
-        _ => prop.pitou.name(),
+        AppView::Search => prop.file.path().display().to_string(),
+        _ => prop.file.name().to_owned(),
     };
 
     html! {
-        <div {style} {ondblclick}> { value } </div>
+        <div {style}>
+            <div class = "filenamewrap" style = {inner_style}>
+                <span class = "filename"> { value } </span>
+            </div>
+        </div>
     }
 }
 
@@ -262,7 +213,7 @@ fn FileTypeCmp(prop: &FileTypeProps) -> Html {
         theme,
         sizes,
         settings: _,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
 
     let width = sizes.row_typefield();
 
@@ -293,7 +244,7 @@ fn LastModifiedCmp(prop: &LastModifiedProps) -> Html {
         theme,
         sizes,
         settings: _,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
 
     let width = sizes.row_sparefield();
 

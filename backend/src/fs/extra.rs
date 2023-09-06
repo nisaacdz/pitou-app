@@ -1,6 +1,11 @@
 use super::Drive;
-use crate::{DateTime, Filter, Metadata, Pitou, Properties, Sort};
-use std::{io, path::PathBuf, time::SystemTime};
+use crate::{DateTime, DriveKind, File, Inner, Locals, Metadata, Properties};
+use std::{
+    io,
+    path::{Path, PathBuf},
+    sync::Arc,
+    time::SystemTime,
+};
 use sysinfo::{System, SystemExt};
 use tokio::fs;
 
@@ -34,136 +39,144 @@ fn test_osstr() {
     todo!()
 }
 
-macro_rules! include {
-    ($val:expr) => {
-        match $val {
-            Some(val) => match val {
-                Filter::System => unimplemented!(),
-                Filter::DotHidden => |pitou: &Pitou| {
-                    pitou
-                        .path()
-                        .file_name()
-                        .map(|f| !f.to_str().unwrap().starts_with("."))
-                        .unwrap_or(true)
-                },
-                Filter::Locked => unimplemented!(),
-            },
-            None => |_: &Pitou| true,
-        }
-    };
+pub fn downloads_folder() -> PathBuf {
+    dirs::download_dir().unwrap()
 }
 
-macro_rules! sort {
-    ($val:expr) => {
-        match $val {
-            Sort::Name(asc) => move |f1: &Pitou, f2: &Pitou| {
-                if asc {
-                    f1.name().cmp(&f2.name())
-                } else {
-                    f2.name().cmp(&f1.name())
-                }
-            },
-            Sort::Modified(_) => unimplemented!(),
-            Sort::Accessed(_) => unimplemented!(),
-        }
-    };
+pub fn desktop_folder() -> PathBuf {
+    dirs::desktop_dir().unwrap()
 }
 
-impl Pitou {
+pub fn videos_folder() -> PathBuf {
+    dirs::video_dir().unwrap()
+}
+
+pub fn pictures_folder() -> PathBuf {
+    dirs::picture_dir().unwrap()
+}
+
+pub fn audios_folder() -> PathBuf {
+    dirs::audio_dir().unwrap()
+}
+
+pub fn documents_folder() -> PathBuf {
+    dirs::document_dir().unwrap()
+}
+
+pub(crate) trait Get {
+    fn get(self) -> std::io::Result<File>;
+}
+
+impl Get for PathBuf {
+    fn get(self) -> std::io::Result<File> {
+        std::fs::metadata(&self).map(|m| {
+            let metadata = m.into();
+            File::new(self, metadata)
+        })
+    }
+}
+
+impl Get for Drive {
+    fn get(self) -> std::io::Result<File> {
+        std::fs::metadata(&self.mount_point).map(|m| {
+            let metadata = m.into();
+            File::new(self.mount_point, metadata)
+        })
+    }
+}
+
+// /// It is safe to because the use of File is carefully monitored so that it
+// /// is never cloned in a separate thread will it still exists in one thread
+// unsafe impl Send for File {}
+
+impl File {
+    pub fn locals() -> Locals {
+        Locals {
+            downloads: downloads_folder()
+                .get()
+                .expect("couldn't parse downloads folder"),
+            videos: videos_folder().get().expect("couldnt parse videos folder"),
+            pictures: pictures_folder()
+                .get()
+                .expect("couldn't parse pictures folder"),
+            audios: audios_folder().get().expect("couldn't parse audios folder"),
+            documents: documents_folder()
+                .get()
+                .expect("couldn't parse documents folder"),
+            desktop: desktop_folder()
+                .get()
+                .expect("couldn't parse desktop folder"),
+        }
+    }
+
+    pub fn home_directory() -> PathBuf {
+        dirs::home_dir().unwrap().into()
+    }
+
     pub async fn try_exists(&self) -> io::Result<bool> {
         fs::try_exists(self.path()).await
     }
 
-    pub async fn metadata(&self) -> io::Result<Metadata> {
-        let metadata = fs::metadata(self.path()).await?;
-        Ok(metadata.into())
-    }
-
-    pub async fn refresh(&self) -> io::Result<Metadata> {
-        self.metadata().await
-    }
-
-    pub async fn children_filtered_and_sorted(
-        &self,
-        filter: Filter,
-        sort: Sort,
-    ) -> io::Result<Vec<Pitou>> {
-        let mut res = self.children_filtered(filter).await?;
-        res.sort_unstable_by(|a, b| sort!(sort)(a, b));
-        Ok(res)
-    }
-
-    pub async fn children_filtered(&self, filter: Filter) -> io::Result<Vec<Pitou>> {
-        self.children().await.map(|c| {
-            c.into_iter()
-                .filter(|v| include!(Some(filter))(v))
-                .collect()
-        })
-    }
-
-    pub async fn children_dirs(&self) -> io::Result<Vec<Pitou>> {
-        if self.path().as_os_str().len() == 0 {
-            return Ok(drives().into_iter().map(|drive| drive.into()).collect());
+    pub async fn children_dirs(dir: &PathBuf) -> io::Result<Vec<Self>> {
+        if dir.as_os_str().len() == 0 {
+            return Ok(drives()
+                .into_iter()
+                .map(|drive| drive.get().expect("couldn't turn drive to File"))
+                .collect());
         }
 
-        let mut read_dir = fs::read_dir(self.path()).await?;
-        let mut res: Vec<Pitou> = Vec::new();
+        let mut read_dir = fs::read_dir(dir).await?;
+        let mut res: Vec<Self> = Vec::new();
         while let Some(entry) = read_dir.next_entry().await? {
-            if entry
-                .file_type()
+            let path = entry.path();
+            let metadata: Metadata = entry
+                .metadata()
                 .await
-                .map(|ft| ft.is_dir())
-                .unwrap_or(false)
-            {
-                res.push(entry.path().into())
+                .expect("couldn't get metadata")
+                .into();
+
+            if metadata.is_dir() {
+                let inner = Arc::new(Inner { path, metadata });
+                res.push(File { inner });
             }
         }
         Ok(res)
     }
 
-    pub async fn children(&self) -> io::Result<Vec<Pitou>> {
-        if self.path().as_os_str().len() == 0 {
-            return Ok(drives().into_iter().map(|drive| drive.into()).collect());
+    pub async fn children(dir: &Path) -> io::Result<Vec<Self>> {
+        if dir.as_os_str().len() == 0 {
+            return Ok(drives()
+                .into_iter()
+                .map(|drive| drive.get().expect("drive failed parse"))
+                .collect());
         }
 
-        let mut read_dir = fs::read_dir(self.path()).await?;
-        let mut res: Vec<Pitou> = Vec::new();
+        let mut read_dir = fs::read_dir(dir).await?;
+        let mut res = Vec::new();
         while let Some(entry) = read_dir.next_entry().await? {
-            res.push(entry.path().into())
+            let path = entry.path();
+            let metadata: Metadata = entry
+                .metadata()
+                .await
+                .expect("couldn't get metadata")
+                .into();
+            let inner = Arc::new(Inner { path, metadata });
+            res.push(File { inner })
         }
         Ok(res)
     }
 
-    pub async fn siblings(&self) -> io::Result<Vec<Pitou>> {
-        let path = match self.path().parent() {
-            Some(v) => v,
-            None => return Ok(drives().into_iter().map(|d| d.into()).collect()),
-        };
-
-        let pitou: Pitou = PathBuf::from(path).into();
-        pitou.children().await
+    pub async fn siblings(dir: &PathBuf) -> io::Result<Vec<Self>> {
+        if let Some(v) = dir.parent() {
+            Self::children(v).await
+        } else {
+            Ok(Vec::new())
+        }
     }
 
-    pub async fn properties(&self) -> io::Result<Properties> {
-        let path = self.path().clone();
-        let metadata = self.metadata().await?;
-        let locked = true;
-        let bookmark = true;
-        let history = true;
-
-        Ok(Properties {
-            path,
-            locked,
-            bookmark,
-            history,
-            metadata,
-        })
+    pub async fn properties(_dir: PathBuf) -> io::Result<Properties> {
+        todo!()
     }
-}
-
-pub async fn debug_with_real_dir() -> Pitou {
-    let pitou = PathBuf::from("d:/Workspace/rust");
-    pitou.into()
 }
 
 #[async_recursion::async_recursion]
@@ -186,12 +199,6 @@ pub async fn directory_size<P: AsRef<std::path::Path> + Send>(path: P) -> std::i
     Ok(total_size)
 }
 
-impl AsRef<std::path::Path> for Pitou {
-    fn as_ref(&self) -> &std::path::Path {
-        &self.path()
-    }
-}
-
 impl From<std::fs::Metadata> for Metadata {
     fn from(metadata: std::fs::Metadata) -> Self {
         let modified: Option<crate::DateTime> = metadata.modified().ok().map(Into::into);
@@ -212,6 +219,37 @@ impl From<SystemTime> for DateTime {
         DateTime {
             dt,
             cur_dt: SystemTime::now(),
+        }
+    }
+}
+
+use sysinfo::{DiskExt, DiskKind};
+impl From<&sysinfo::Disk> for Drive {
+    fn from(drive: &sysinfo::Disk) -> Self {
+        let mount_point = drive.mount_point().into();
+        let is_removable = drive.is_removable();
+        let total_space = drive.total_space();
+        let free_space = drive.available_space();
+        let kind = drive.kind().into();
+        let name = drive.name().to_str().unwrap().to_owned();
+
+        Drive {
+            mount_point,
+            total_space,
+            free_space,
+            is_removable,
+            kind,
+            name,
+        }
+    }
+}
+
+impl From<sysinfo::DiskKind> for DriveKind {
+    fn from(kind: sysinfo::DiskKind) -> Self {
+        match kind {
+            DiskKind::HDD => DriveKind::HDD,
+            DiskKind::SSD => DriveKind::SSD,
+            DiskKind::Unknown(_) => DriveKind::Unkown,
         }
     }
 }

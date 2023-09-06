@@ -1,7 +1,7 @@
-use super::Pitou;
 use std::collections::LinkedList;
+use crate::Path;
 
-static mut CLIPBOARD: LinkedList<Vec<Pitou>> = LinkedList::new();
+static mut CLIPBOARD: LinkedList<Vec<Path>> = LinkedList::new();
 static mut SHOULD_CUT: bool = false;
 
 pub enum Item<T> {
@@ -10,7 +10,7 @@ pub enum Item<T> {
     Copied(T),
 }
 
-pub fn content() -> &'static LinkedList<Vec<Pitou>> {
+pub fn content() -> &'static LinkedList<Vec<Path>> {
     unsafe { &CLIPBOARD }
 }
 
@@ -30,7 +30,7 @@ pub fn drop(idx: usize) {
     }
 }
 
-pub(super) fn get() -> Item<&'static Vec<Pitou>> {
+pub(super) fn get() -> Item<&'static Vec<Path>> {
     unsafe {
         if let Some(v) = CLIPBOARD.back() {
             if SHOULD_CUT {
@@ -45,7 +45,7 @@ pub(super) fn get() -> Item<&'static Vec<Pitou>> {
     }
 }
 
-pub(super) fn put(item: Item<Vec<Pitou>>) {
+pub(super) fn put(item: Item<Vec<Path>>) {
     match item {
         Item::None => (),
         Item::Cut(vals) => unsafe {

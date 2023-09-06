@@ -1,9 +1,14 @@
-use std::{collections::LinkedList, sync::Arc};
-
-use tokio::sync::Mutex;
-
 use super::SearchMsg;
-use crate::Pitou;
+use crate::File;
+use std::{
+    collections::LinkedList,
+    sync::{Arc, Mutex},
+};
+
+/// TODO
+/// TODO
+/// I need to handle the error case on mutex.lock
+///
 
 pub fn new_search_stream() -> SearchStream {
     let mtx = Arc::new(Mutex::new(SearchMsg::Searching(LinkedList::new())));
@@ -16,8 +21,8 @@ pub struct SearchStream {
 }
 
 impl SearchStream {
-    pub async fn terminate(&self) {
-        let mut lock = self.mtx.lock().await;
+    pub fn terminate(&self) {
+        let mut lock = self.mtx.lock().expect("search stream mutex poisened");
         match &mut *lock {
             SearchMsg::Searching(items) => {
                 if items.len() == 0 {
@@ -30,13 +35,16 @@ impl SearchStream {
         }
     }
 
-    pub async fn ended(&self) -> bool {
-        matches!(&*self.mtx.lock().await, SearchMsg::Terminated(_))
+    pub fn ended(&self) -> bool {
+        matches!(
+            &*self.mtx.lock().expect("mutex guard poisened"),
+            SearchMsg::Terminated(_)
+        )
     }
 
     /// pushes a new item into the stream returning false if the stream has already terminated
-    pub async fn push(&self, item: Pitou) -> bool {
-        let mut lock = self.mtx.lock().await;
+    pub fn push(&self, item: File) -> bool {
+        let mut lock = self.mtx.lock().expect("mutex guard poisened");
         match &mut *lock {
             SearchMsg::Searching(items) => {
                 items.push_back(item);
@@ -46,10 +54,8 @@ impl SearchStream {
         }
     }
 
-    pub async fn pull(&self) -> SearchMsg {
-        println!("pull invoked!");
-        let mut lock = self.mtx.lock().await;
-        println!("Mutex guard received!");
+    pub fn pull(&self) -> SearchMsg {
+        let mut lock = self.mtx.lock().expect("mutex guard poisened");
         match &mut *lock {
             SearchMsg::Searching(items) => {
                 SearchMsg::Searching(std::mem::replace(items, LinkedList::new()))

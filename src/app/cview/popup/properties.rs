@@ -1,16 +1,21 @@
-use crate::app::Theme;
-use backend::Pitou;
+use backend::File;
 use yew::prelude::*;
+
+use crate::app::ApplicationContext;
 
 #[derive(PartialEq, Properties)]
 pub struct PropertiesProps {
     onclose: Callback<()>,
-    path: Pitou,
+    file: File,
 }
 
 #[function_component]
 pub fn Properties(prop: &PropertiesProps) -> Html {
-    let theme = use_context::<Theme>().expect("no theme context provided");
+    let ApplicationContext {
+        theme,
+        settings: _,
+        sizes: _,
+    } = use_context().unwrap();
 
     let border_color = theme.spare();
     let background_color = theme.background2();
@@ -24,7 +29,7 @@ pub fn Properties(prop: &PropertiesProps) -> Html {
     let entries = {
         html! {
             <div>
-                <Path pitou = { prop.path.clone() } />
+                <Path file = { prop.file.clone() } />
             </div>
         }
     };
@@ -39,7 +44,7 @@ pub fn Properties(prop: &PropertiesProps) -> Html {
 
 #[derive(PartialEq, Properties)]
 struct PathProps {
-    pitou: Pitou,
+    file: File,
 }
 
 #[function_component]
@@ -47,7 +52,7 @@ fn Path(prop: &PathProps) -> Html {
     html! {
         <div>
             <span> { "full path: " } </span>
-            <span> { prop.pitou.path().display() } </span>
+            <span> { prop.file.path().display() } </span>
             <button></button>
         </div>
     }

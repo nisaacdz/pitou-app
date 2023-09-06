@@ -1,9 +1,15 @@
-use crate::app::{confirm::Confirm, data::selections, invoke, ApplicationContext, ItemsArg};
+use std::{cell::RefCell, rc::Rc};
+
+use crate::app::{confirm::ConfirmDelete, ApplicationContext};
 
 use super::NameField;
-use serde_wasm_bindgen::to_value;
-use wasm_bindgen_futures::spawn_local;
+use wasm_bindgen::JsValue;
 use yew::prelude::*;
+
+struct StateData {
+    deletedata: JsValue,
+    prompt: String,
+}
 
 use super::TopButtonProps;
 
@@ -13,54 +19,44 @@ pub fn DeleteButton(prop: &TopButtonProps) -> Html {
         sizes,
         theme: _,
         settings: _,
-    } = use_context::<ApplicationContext>().unwrap();
-    let items_to_delete = use_state(|| None);
+    } = use_context().unwrap();
+    let deletedata = use_state(|| RefCell::new(None));
 
     let onclick = {
-        let items_to_delete = items_to_delete.clone();
+        let deletedata = deletedata.clone();
         move |_| {
-            if selections::len() > 0 {
-                items_to_delete.set(selections::all().map(|items| items.collect::<Vec<_>>()))
-            }
-        }
-    };
+            if let Some(s) = crate::app::data::all() {
+                let items = s.borrow();
+                if items.len() > 0 {
+                    let prompt = {
+                        let first_item = items.iter().next().unwrap().name();
+                        let others = if items.len() == 2 {
+                            format! {" and {} other", items.len() - 1}
+                        } else if items.len() > 2 {
+                            format! {" and {} others", items.len() - 1}
+                        } else {
+                            "".into()
+                        };
+                        format! {"Are you sure you want to delete '{first_item}'{others}?"}
+                    };
+                    let res = crate::app::tasks::to_js_items(items.iter());
 
-    let confirm = {
-        let updateui = prop.updateui.clone();
-        let items_to_delete = items_to_delete.clone();
-        move |_| {
-            if let Some(items) = &*items_to_delete {
-                let arg = to_value(&ItemsArg { items: items }).unwrap();
-                let items_to_delete = items_to_delete.clone();
-                let updateui = updateui.clone();
-                spawn_local(async move {
-                    invoke("delete", arg).await;
-                    items_to_delete.set(None);
-                    updateui.emit(());
-                });
+                    deletedata.set(RefCell::new(Some(StateData { deletedata: res, prompt })));
+                    
+                }
             }
         }
     };
 
     let cancel = {
-        let items_to_delete = items_to_delete.clone();
-        move |_| items_to_delete.set(None)
+        let deletedata = deletedata.clone();
+        move |_| deletedata.set(RefCell::new(None))
     };
 
-    let prompt_or_not = if let Some(items) = &*items_to_delete {
-        let first_item = items.first().map(|first| first.name()).unwrap_or_default();
-        let others = if items.len() == 2 {
-            format! {" and {} other", items.len() - 1}
-        } else if items.len() > 2 {
-            format! {" and {} others", items.len() - 1}
-        } else {
-            "".into()
-        };
-
-        let prompt = format! {"Are you sure you want to delete '{first_item}'{others}?"};
-
+    let prompt_or_not = if let Some(StateData { deletedata, prompt }) = deletedata.borrow_mut().take() {
+        let deletedata = Rc::new(RefCell::new(Some(deletedata)));
         html! {
-            <Confirm {confirm} {cancel} {prompt}/>
+            <ConfirmDelete {deletedata}  {prompt} {cancel} updateui = {prop.updateui.clone()}/>
         }
     } else {
         html! {}
@@ -105,7 +101,7 @@ pub fn RefreshButton(prop: &TopButtonProps) -> Html {
         theme: _,
         sizes,
         settings: _,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
     let updateui = prop.updateui.clone();
 
     let onclick = move |_| updateui.emit(());

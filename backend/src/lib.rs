@@ -69,3 +69,60 @@ where
             .all(|(a, b)| (a as char).eq_ignore_ascii_case(&(b as char)))
     }
 }
+
+/// Represents specific patterns to exclude from a list of files
+#[derive(Clone, Copy, PartialEq)]
+pub struct Filter {
+    dot_hidden: bool,
+    sys_hidden: bool,
+    dir: bool,
+    link: bool,
+    file: bool,
+}
+
+impl Filter {
+    pub const DEFAULT: Self = Self {
+        dot_hidden: true,
+        sys_hidden: true,
+        dir: false,
+        link: false,
+        file: false,
+    };
+
+    /// Returns true if the given file should be excluded and false otherwise
+    pub fn exclude(self, file: &File) -> bool {
+        (self.dot_hidden && file.name().starts_with('.'))
+            || (self.sys_hidden && file.name().starts_with('~'))
+            || (self.file && file.metadata().is_file())
+            || (self.dir && file.metadata().is_dir())
+            || (self.link && file.metadata().is_link())
+    }
+
+    /// Returns true if the given file should be included and false otherwise
+    pub fn include(self, file: &File) -> bool {
+        !self.exclude(file)
+    }
+}
+
+impl Default for Filter {
+    fn default() -> Self {
+        Filter::DEFAULT
+    }
+}
+
+#[derive(Clone, Copy)]
+pub enum SolftFilter {}
+
+#[derive(Clone, Copy)]
+pub enum HardFilter {
+    DotHidden,
+    SystemHidden,
+    Both,
+}
+
+#[derive(Clone, Copy)]
+pub enum Sort {
+    Name(bool),
+    Modified(bool),
+    Accessed(bool),
+}

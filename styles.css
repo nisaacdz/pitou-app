@@ -23,6 +23,7 @@ body {
 
 .card {
   transition: transform 0.3s, filter 0.3s;
+  cursor: pointer;
 }
 
 .card:hover {
@@ -31,6 +32,42 @@ body {
 
 .card:active {
   filter: brightness(300%);
+}
+
+.menu_icon::after, .menu_icon::before {
+  position: absolute;
+  --scale: 0;
+  --tooltip-arrow-size: 10px;
+  left: calc(100% + 3px - var(--tooltip-arrow-size));
+  top: 50%;
+  z-index: 99;
+  transform: translateX(var(--x-trans, 0)) translateY(-50%) scale(var(--scale));
+  transition: 350ms transform;
+  transform-origin: left center;
+}
+
+/*TODO tooltip arrow*/
+.menu_icon::before {
+  --x-trans: 0;
+  content: '';
+  border: var(--tooltip-arrow-size) solid transparent;
+  border-right-color: var(--tooltip-background);
+}
+
+/*main tooltip box*/
+.menu_icon::after {
+  --x-trans: calc(2 * var(--tooltip-arrow-size));
+  padding: 0.3rem;
+  width: max-content;
+  height: max-content;
+  border-radius: .3rem;
+  color: var(--tooltip-foreground);
+  background-color: var(--tooltip-background);
+  content: attr(tooltip);
+}
+
+.menu_icon:hover::after, .menu_icon:hover::before {
+ --scale: 1;
 }
 
 .popup {
@@ -65,6 +102,34 @@ body {
   height: 50px;
 }
 
+.filename {
+  display: inline-block;
+  position: relative;
+}
+
+.filenamewrap {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  position: relative;
+  /* transition: all 0.5s ease-in-out; */
+}
+
+.filename:hover {
+  animation: marquee 5s linear infinite;
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
 .dot {
   width: 6px;
   height: 6px;
@@ -88,8 +153,8 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  border-radius: 8px;
-  background-color: darkgray;
+  border-radius: 5px;
+  background-color: var(--scrollbar-thumb);
 }
 
 /* Styles for the Search Options Component */
@@ -99,21 +164,15 @@ body {
   justify-content: center;
   align-items: center;
   padding: 20px;
-  /* background: linear-gradient(45deg, #ffcc00, #ff6699); */
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
   color: #fff;
   font-family: 'Cursive', cursive;
 }
 
 /* Styles for the Search Input */
 .search-input {
-  width: 200px;
-  border: none;
-  border-radius: 2px;
+  border-radius: 5px;
   box-sizing: border-box;
-  font-size: 18px;
-  color: #333;
-  box-shadow: 10px 10px 10px rgba(0, 0, 0, 0.2);
+  font-size: 15px;
 }
 
 /* Styles for the Title */
@@ -121,7 +180,6 @@ body {
   font-size: 20px;
   font-weight: bold;
   margin-top: 15px;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 /* Styles for Form Items */
@@ -138,8 +196,6 @@ body {
   border: none;
   border-radius: 10px;
   font-size: 16px;
-  color: #333;
-  box-shadow: 4px 4px 4px rgba(0, 0, 0, 0.2);
 }
 
 /* Styles for Number Inputs */
@@ -148,25 +204,27 @@ body {
   padding: 10px;
   border-radius: 10px;
   font-size: 15px;
-  color: #333;
-  box-shadow: 4px 4px 4px rgba(0, 0, 0, 0.2);
-}
-
-/* Styles for Checkbox Inputs */
-.checkbox-input {
-  margin-right: 8px;
 }
 
 /* Styles for Submit Button */
 .submit-button {
   border-radius: 10px;
   font-size: 15px;
-  transition: transform 0.5s ease;
-  box-shadow: 4px 4px 4px rgba(0, 0, 0, 0.2);
+}
+
+.card.home::after {
+  content: 'home';
+  top: 0;
+  left: 50%;
 }
 
 .adzk {
-  box-sizing: border-box;
-  display: none;
-  appearance: none;
+cursor: pointer;
+flex-wrap: wrap;
+justify-content: space-evenly;
+}
+
+
+.test_me_rm {
+  justify-content: first baseline;
 }

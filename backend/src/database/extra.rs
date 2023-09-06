@@ -1,17 +1,15 @@
+use crate::Path;
 use std::sync::Arc;
 
-use tokio::sync::Mutex;
-
-use crate::Pitou;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
+use tokio::sync::Mutex;
 
 const DATABSE_PATH: &'static str = "./target/temp/database/database.db";
 
 #[derive(Clone, Copy)]
 pub(crate) enum WhichTable {
     Bookmarks,
-    #[allow(dead_code)]
     Locked,
     History,
 }
@@ -126,13 +124,13 @@ fn get_or_init() -> Arc<Mutex<Database>> {
     }
 }
 
-async fn get_all(table: WhichTable) -> Vec<Pitou> {
+async fn get_all(table: WhichTable) -> Vec<Path> {
     create_tables_or_do_nothing().await;
     get_from_database(table)
         .await
         .expect("couldn't retrieve table contents")
         .into_iter()
-        .map(|json_str| serde_json::from_str::<Pitou>(&json_str).unwrap())
+        .map(|json_str| serde_json::from_str::<Path>(&json_str).unwrap())
         .collect()
 }
 
@@ -142,7 +140,7 @@ macro_rules! json {
     };
 }
 
-async fn append(pitou: &Pitou, table: WhichTable) -> Result<(), diesel::result::Error> {
+async fn append(pitou: &Path, table: WhichTable) -> Result<(), diesel::result::Error> {
     let json = json!(pitou);
     create_tables_or_do_nothing().await;
 
@@ -166,7 +164,7 @@ async fn append(pitou: &Pitou, table: WhichTable) -> Result<(), diesel::result::
     Ok(())
 }
 
-async fn last_item(table: WhichTable) -> Option<Pitou> {
+async fn last_item(table: WhichTable) -> Option<Path> {
     create_tables_or_do_nothing().await;
     match table {
         WhichTable::History => {
@@ -207,13 +205,13 @@ async fn last_item(table: WhichTable) -> Option<Pitou> {
 }
 
 pub mod bookmarks {
-    use super::{get_all, Pitou, WhichTable};
+    use super::{get_all, Path, WhichTable};
 
-    pub async fn all() -> Vec<Pitou> {
+    pub async fn all() -> Vec<Path> {
         get_all(WhichTable::Bookmarks).await
     }
 
-    pub async fn append(pitou: &Pitou) {
+    pub async fn append(pitou: &Path) {
         super::append(pitou, WhichTable::Bookmarks)
             .await
             .expect("couldn't append to bookmarks")
@@ -221,19 +219,19 @@ pub mod bookmarks {
 }
 
 pub mod history {
-    use super::{get_all, Pitou, WhichTable};
+    use super::{get_all, Path, WhichTable};
 
-    pub async fn all() -> Vec<Pitou> {
+    pub async fn all() -> Vec<Path> {
         get_all(WhichTable::History).await
     }
 
-    pub async fn append(pitou: &Pitou) {
+    pub async fn append(pitou: &Path) {
         super::append(pitou, WhichTable::History)
             .await
             .expect("couldn't append to history")
     }
 
-    pub async fn last() -> Option<Pitou> {
+    pub async fn last() -> Option<Path> {
         super::last_item(WhichTable::History).await
     }
 }

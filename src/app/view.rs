@@ -2,7 +2,7 @@ use yew::prelude::*;
 
 use crate::app::{ApplicationContext, SearchPage};
 
-use super::{cview::*, AppView, BottomPane, Pane, ToolBar};
+use super::{cview::*, AppView, BottomPane, HomeView, Pane, ToolBar};
 
 #[derive(PartialEq, Properties)]
 pub struct ContentViewProp {
@@ -15,7 +15,7 @@ pub fn ContentView(prop: &ContentViewProp) -> Html {
         theme,
         sizes,
         settings,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
     let force_update = use_force_update();
 
     let updateui = { move |_| force_update.force_update() };
@@ -24,6 +24,7 @@ pub fn ContentView(prop: &ContentViewProp) -> Html {
     let size = sizes.screen();
 
     let style = format! {"
+    --scrollbar-thumb: {background_color};
     background-color: {background_color};
     margin: 0% 0% 0% 0%;
     padding: 0% 0% 0% 0%;
@@ -53,7 +54,16 @@ pub fn ContentView(prop: &ContentViewProp) -> Html {
                 <BottomPane/>
             </div>
         },
-        AppView::Home => html! { <h1>{"Hello Home"}</h1> },
+        AppView::Home => html! {
+            <div {style} >
+                <ToolBar {updateui}/>
+                <div style = {middle_style}>
+                    <LeftPane updateview = {prop.updateview.clone()}/>
+                    <HomeView/>
+                </div>
+                <BottomPane/>
+            </div>
+        },
         AppView::Settings => html! { <h1>{"Hello Settings"}</h1> },
         AppView::Search => html! {
             <div {style} >

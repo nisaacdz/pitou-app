@@ -1,8 +1,4 @@
-use crate::app::{
-    data::selections, invoke, new_dir::NewDirPopUp, new_file::NewFilePopUp, rename::RenamePopUp,
-    ApplicationContext, PitouAndNameArgs, PitouArg,
-};
-use serde_wasm_bindgen::to_value;
+use crate::app::{new_dir::NewDirPopUp, new_file::NewFilePopUp, rename::RenamePopUp, ApplicationContext};
 use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
 
@@ -14,7 +10,7 @@ pub fn RenameButton(prop: &TopButtonProps) -> Html {
         theme: _,
         sizes,
         settings: _,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
     let item_to_rename = use_state(|| None);
 
     let finished = Callback::from({
@@ -31,8 +27,8 @@ pub fn RenameButton(prop: &TopButtonProps) -> Html {
         let item_to_rename = item_to_rename.clone();
         move |_| {
             if let None = &*item_to_rename {
-                if let Some(mut items) = selections::all() {
-                    if let Some(file) = items.next() {
+                if let Some(items) = crate::app::data::all() {
+                    if let Some(file) = items.borrow().iter().next() {
                         item_to_rename.set(Some(file.clone()))
                     }
                 }
@@ -48,14 +44,10 @@ pub fn RenameButton(prop: &TopButtonProps) -> Html {
             let name = name.clone();
             let finished = finished.clone();
             let item_to_rename = item_to_rename.clone();
-            if let Some(file) = &*item_to_rename {
-                let args = to_value(&PitouAndNameArgs {
-                    pitou: &file,
-                    name: &name,
-                })
-                .unwrap();
+            if let Some(file) = item_to_rename.as_ref() {
+                let file = file.clone();
                 spawn_local(async move {
-                    invoke("rename", args).await;
+                    crate::app::tasks::rename(file.path(), &name).await;
                     finished.emit(());
                 });
             }
@@ -113,7 +105,7 @@ pub fn NewFolderButton(prop: &TopButtonProps) -> Html {
         theme: _,
         sizes,
         settings: _,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
     let create_dir_in = use_state(|| None);
 
     let finished = Callback::from({
@@ -150,11 +142,10 @@ pub fn NewFolderButton(prop: &TopButtonProps) -> Html {
             let name = name.clone();
             let finished = finished.clone();
             let directory = directory.clone();
-            if let Some(file) = &*directory {
-                let createme = file.path().join(name).into();
-                let args = to_value(&PitouArg { pitou: &createme }).unwrap();
+            if let Some(path) = &*directory {
+                let createme = path.join(name).into();
                 spawn_local(async move {
-                    invoke("createdir", args).await;
+                    crate::app::tasks::createdir(&createme).await;
                     finished.emit(());
                 });
             }
@@ -206,7 +197,7 @@ pub fn NewFileButton(prop: &TopButtonProps) -> Html {
         theme: _,
         sizes,
         settings: _,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
     let create_file_in = use_state(|| None);
 
     let finished = Callback::from({
@@ -242,10 +233,9 @@ pub fn NewFileButton(prop: &TopButtonProps) -> Html {
         move |name: String| {
             if let Some(directory) = &*directory {
                 let finished = finished.clone();
-                let createme = directory.path().join(&name).into();
-                let args = to_value(&PitouArg { pitou: &createme }).unwrap();
+                let createme = directory.join(&name).into();
                 spawn_local(async move {
-                    invoke("createfile", args).await;
+                    crate::app::tasks::createfile(&createme).await;
                     finished.emit(());
                 });
             }

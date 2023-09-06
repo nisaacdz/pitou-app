@@ -1,13 +1,10 @@
-use std::time::Duration;
+use std::{time::Duration, rc::Rc, path::PathBuf};
 
-use backend::{Pitou, SearchMsg};
-use serde_wasm_bindgen::{from_value, to_value};
+use backend::{SearchMsg, File};
 use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
 
-use crate::app::{
-    invoke, AncestorsTabs, ApplicationContext, MainPane, PitouNoArg, PitouSearchArgs,
-};
+use crate::app::{AncestorsTabs, ApplicationContext, MainPane};
 
 mod options;
 
@@ -24,9 +21,8 @@ pub fn SearchPage() -> Html {
                 if let None = &*dir {
                     let dir = dir.clone();
                     spawn_local(async move {
-                        let jsval =
-                            invoke("default_directory", to_value(&PitouNoArg).unwrap()).await;
-                        let newdir = from_value::<Pitou>(jsval).unwrap();
+                        let res = crate::app::tasks::default_directory().await;
+                        let newdir = Rc::new(res);
                         dir.set(Some(newdir))
                     });
                 }
@@ -37,14 +33,25 @@ pub fn SearchPage() -> Html {
 
     let updatedirectory = {
         let dir = dir.clone();
-        move |newdir| dir.set(Some(newdir))
+        move |file: File| {
+            let path = Rc::new(file.path().clone());
+            dir.set(Some(path));
+        }
+    };
+
+    let updatedirectory2 = {
+        let dir = dir.clone();
+        move |path| {
+            let path = Rc::new(path);
+            dir.set(Some(path))
+        }
     };
 
     let ApplicationContext {
         theme,
         sizes,
         settings: _,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
 
     let outer_size = sizes.pane();
     let outer_background_color = theme.background2();
@@ -60,7 +67,7 @@ pub fn SearchPage() -> Html {
 
     html! {
         <div style = {outer_style}>
-            <AncestorsTabs pitou = {(&*dir).clone()} updatedirectory = {updatedirectory.clone()} />
+            <AncestorsTabs folder = {(&*dir).clone()} updatedirectory = {updatedirectory2} />
             <SearchView dir = {(&*dir).clone()} {updatedirectory}/>
         </div>
     }
@@ -68,8 +75,8 @@ pub fn SearchPage() -> Html {
 
 #[derive(PartialEq, Properties)]
 pub struct SearchViewProps {
-    dir: Option<Pitou>,
-    updatedirectory: Callback<Pitou>,
+    dir: Option<Rc<PathBuf>>,
+    updatedirectory: Callback<File>,
 }
 
 #[derive(Clone, Copy)]
@@ -80,7 +87,7 @@ pub enum SearchState {
 
 #[derive(Clone)]
 pub struct SearchResultState {
-    results: std::rc::Rc<Vec<Pitou>>,
+    results: std::rc::Rc<Vec<File>>,
     state: SearchState,
 }
 
@@ -100,7 +107,7 @@ impl Default for SearchResultState {
 }
 
 impl SearchResultState {
-    fn results(&self) -> std::rc::Rc<Vec<Pitou>> {
+    fn results(&self) -> std::rc::Rc<Vec<File>> {
         self.results.clone()
     }
     fn state(&self) -> SearchState {
@@ -120,7 +127,7 @@ pub fn SearchView(prop: &SearchViewProps) -> Html {
         theme: _,
         sizes,
         settings: _,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
     let state = use_state_eq(|| SearchResultState::default());
 
     {
@@ -197,30 +204,24 @@ pub fn SearchView(prop: &SearchViewProps) -> Html {
         let dir = prop.dir.clone();
         let search_state = state.clone();
         move |(input, options)| {
-            if let Some(dir) = &dir {
-                let arg = to_value(&PitouSearchArgs {
-                    key: &input,
-                    pitou: &dir,
-                    options,
-                })
-                .unwrap();
+            let dir = dir.clone();
+            let search_state = search_state.clone();
 
-                let search_state = search_state.clone();
-
-                spawn_local(async move {
-                    invoke("restart_stream_search", arg).await;
+            spawn_local(async move {
+                if let Some(dir) = dir.as_ref() {
+                    crate::app::tasks::restart_stream_search(&input, (&**dir).as_ref(), options).await;
                     let results = std::rc::Rc::new(Vec::new());
                     let state = SearchState::Searching;
                     search_state.set(SearchResultState { results, state })
-                });
-            }
+                }
+            });
         }
     };
 
     html! {
         <div {style}>
             <SearchOptionsCmp {onsubmit}/>
-            <MainPane children = {(*state.results()).clone()} updatedirectory = {prop.updatedirectory.clone()}/>
+            <MainPane children = {state.results()} updatedirectory = {prop.updatedirectory.clone()}/>
         </div>
     }
 }

@@ -1,24 +1,34 @@
-use backend::Pitou;
-use serde_wasm_bindgen::{from_value, to_value};
 use wasm_bindgen_futures::spawn_local;
 use web_sys::{HtmlInputElement, HtmlSelectElement};
 use yew::prelude::*;
-
-use crate::app::{invoke, ApplicationContext, PitouArg};
+use crate::app::ApplicationContext;
+use std::{rc::Rc, path::PathBuf};
+use backend::File;
 
 #[derive(PartialEq, Properties)]
-pub struct AncestorsTabsProps {
-    pub pitou: Option<Pitou>,
-    pub updatedirectory: Callback<Pitou>,
+pub struct FolderDir {
+    pub folder: Option<File>,
+    pub updatedirectory: Callback<PathBuf>,
+}
+#[derive(PartialEq, Properties)]
+pub struct FolderDir2 {
+    pub folder: File,
+    pub updatedirectory: Callback<PathBuf>,
+}
+
+#[derive(PartialEq, Properties)]
+pub struct MainAncestorTabsProps {
+    pub folder: Option<Rc<PathBuf>>,
+    pub updatedirectory: Callback<PathBuf>,
 }
 
 #[function_component]
-pub fn AncestorsTabs(prop: &AncestorsTabsProps) -> Html {
+pub fn AncestorsTabs(prop: &MainAncestorTabsProps) -> Html {
     let ApplicationContext {
         theme,
         sizes,
         settings: _,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
     let isinput = use_state_eq(|| false);
 
     let onclick = {
@@ -31,7 +41,7 @@ pub fn AncestorsTabs(prop: &AncestorsTabsProps) -> Html {
         let updatedirectory = prop.updatedirectory.clone();
         move |ns| {
             isinput.set(false);
-            updatedirectory.emit(Pitou::from(std::path::PathBuf::from(ns)))
+            updatedirectory.emit(PathBuf::from(ns))
         }
     };
 
@@ -63,16 +73,12 @@ pub fn AncestorsTabs(prop: &AncestorsTabsProps) -> Html {
     margin-right: 1%;
     "};
 
-    let entries = if let Some(pitou) = prop.pitou.as_ref() {
+    let entries = if let Some(path) = prop.folder.as_ref() {
         if *isinput {
-            html! { <EnterPath pitou = {pitou.clone()} {finished}/> }
+            html! { <EnterPath folder = {path.clone()} {finished}/> }
         } else {
-            pitou
-                .ancestors()
-                .into_iter()
-                .map(|pitou| (pitou, prop.updatedirectory.clone()))
-                .map(|(pitou, updatedirectory)| html! { <Ancestor {pitou} {updatedirectory} /> })
-                .collect::<Html>()
+            let key = crate::app::data::unique();
+            html! { <Ancestors folder = {path.clone()} updatedirectory = {prop.updatedirectory.clone()} {key}/> }
         }
     } else {
         html! {}
@@ -88,79 +94,83 @@ pub fn AncestorsTabs(prop: &AncestorsTabsProps) -> Html {
 }
 
 #[derive(PartialEq, Properties)]
-pub struct AncestorProps {
-    pitou: Pitou,
-    updatedirectory: Callback<Pitou>,
+pub struct AncestorsProps {
+    folder: Rc<PathBuf>,
+    updatedirectory: Callback<PathBuf>,
 }
 
+
+#[function_component]
+pub fn Ancestors(prop: &AncestorsProps) -> Html {
+    prop.folder.ancestors()
+        .map(|path| (PathBuf::from(path), prop.updatedirectory.clone()))
+        .map(|(folder, updatedirectory)| html! { <Ancestor {folder} {updatedirectory}/> })
+        .collect::<Html>()
+}
+
+
 #[derive(PartialEq, Properties)]
-pub struct EnterPathProps {
-    pitou: Pitou,
+struct EnterPathProps {
+    folder: Rc<PathBuf>,
     finished: Callback<String>,
 }
 
 #[function_component]
-pub(super) fn EnterPath(prop: &EnterPathProps) -> Html {
+fn EnterPath(prop: &EnterPathProps) -> Html {
     let ApplicationContext {
         theme: _,
         sizes: _,
         settings: _,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
     let input_ref = use_node_ref();
     let onclick = move |e: MouseEvent| e.stop_propagation();
 
     let style = format! {"
-    width: auto;
-    height: calc(100% - 2px);
+    width: 80%;
+    height: 80%;
     "};
 
-    let onkeypress = {
+    let onsubmit = {
         let finished = prop.finished.clone();
         let input_ref = input_ref.clone();
 
-        move |e: KeyboardEvent| {
-            if e.key_code() == 13 {
-                let entered = input_ref.cast::<HtmlInputElement>().unwrap().value();
-                finished.emit(entered.clone())
-            }
+        move |e: SubmitEvent| {
+            e.prevent_default();
+            let entered = input_ref.cast::<HtmlInputElement>().unwrap().value();
+            finished.emit(entered)
         }
     };
 
-    let value = prop.pitou.path().display().to_string();
+    let value = prop.folder.display().to_string();
 
     html! {
-        <div {style}>
-            <input type = "text" ref = {input_ref} {value} {onclick} {onkeypress}/>
-        </div>
+        <form {style} {onsubmit}>
+            <input type = "text" ref = {input_ref} {value} {onclick} width = "100%"/>
+        </form>
     }
 }
 
+#[derive(PartialEq, Properties)]
+struct AncestorProps {
+    folder: PathBuf,
+    updatedirectory: Callback<PathBuf>,
+}
+
 #[function_component]
-pub(super) fn Ancestor(prop: &AncestorProps) -> Html {
+fn Ancestor(prop: &AncestorProps) -> Html {
     let ApplicationContext {
         theme,
         sizes: _,
         settings: _,
-    } = use_context::<ApplicationContext>().unwrap();
-
-    let pitou = prop.pitou.clone();
+    } = use_context().unwrap();
 
     let onclick = move |e: MouseEvent| e.stop_propagation();
 
-    let background_color = theme.background2();
+    let background_color = theme.background1();
     let border_color = theme.spare();
 
-    let onselectitem = {
-        let updatedirectory = prop.updatedirectory.clone();
-
-        move |pitou| {
-            gloo::console::log!("updating directory from choosedir");
-            updatedirectory.emit(pitou)
-        }
-    };
-
     let style = format! {"
-    height: calc(100% - 2px);
+    height: 80%;
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -173,36 +183,28 @@ pub(super) fn Ancestor(prop: &AncestorProps) -> Html {
 
     html! {
         <div {style} {onclick}>
-            <TabName pitou = { pitou.clone() } updatedirectory = { prop.updatedirectory.clone() } />
-            <ChooseDir {pitou} {onselectitem}/>
+            <TabName folder = { prop.folder.clone() } updatedirectory = { prop.updatedirectory.clone() } />
+            <ChooseDir folder = {prop.folder.clone()} updatedirectory = { prop.updatedirectory.clone()}/>
         </div>
     }
 }
 
-#[derive(PartialEq, Properties)]
-struct ChooseDirProps {
-    onselectitem: Callback<Pitou>,
-    pitou: Pitou,
-}
-
 #[function_component]
-fn ChooseDir(prop: &ChooseDirProps) -> Html {
+fn ChooseDir(prop: &AncestorProps) -> Html {
     let ApplicationContext {
         theme: _,
         sizes,
         settings: _,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
     let children = use_state(|| None);
 
     {
         let children = children.clone();
-        let pitou = prop.pitou.clone();
+        let folder = prop.folder.clone();
         use_effect_with_deps(
             move |_| {
-                let arg = to_value(&PitouArg { pitou: &pitou }).unwrap();
-                let children = children.clone();
                 spawn_local(async move {
-                    let res = from_value::<Vec<Pitou>>(invoke("children_dirs", arg).await).unwrap();
+                    let res = crate::app::tasks::children_dirs(&folder).await;
                     children.set(Some(res));
                 });
             },
@@ -210,15 +212,26 @@ fn ChooseDir(prop: &ChooseDirProps) -> Html {
         );
     }
 
-    let options = children
-        .as_ref()
-        .map(|children| {
-            children
-                .into_iter()
-                .map(|pitou| html! { <option selected = {false}>{pitou.name()}</option> })
-                .collect::<Html>()
-        })
-        .unwrap_or_default();
+    let options = if let Some(children) = &*children {
+        let msg = if children.len() == 0 {
+            String::from("no folders present")
+        } else if children.len() == 1 {
+            String::from("click folder to open")
+        } else {
+            String::from("select folder to open")
+        };
+
+        Some(html! { <option selected = {true} disabled = {true}>{msg}</option> })
+            .into_iter()
+            .chain(
+                children
+                    .into_iter()
+                    .map(|pitou| html! { <option selected = {false}>{pitou.name()}</option> }),
+            )
+            .collect::<Html>()
+    } else {
+        html! {}
+    };
 
     let width = sizes.choosedir();
 
@@ -228,6 +241,7 @@ fn ChooseDir(prop: &ChooseDirProps) -> Html {
     display: flex;
     align-items: center;
     box-sizing: border-box;
+    cursor: pointer;
     "};
 
     let select_style = format! {"
@@ -238,15 +252,17 @@ fn ChooseDir(prop: &ChooseDirProps) -> Html {
 
     let onchange = {
         let children = children.clone();
-        let onselect = prop.onselectitem.clone();
+        let onselect = prop.updatedirectory.clone();
         move |e: Event| {
+            e.prevent_default();
             let idx = e
                 .target_dyn_into::<HtmlSelectElement>()
                 .unwrap()
-                .selected_index();
+                .selected_index()
+                - 1;
             if let Some(children) = &*children {
-                if idx >= 0 || idx < children.len() as i32 {
-                    onselect.emit(children[idx as usize].clone());
+                if idx >= 0 && idx < children.len() as i32 {
+                    onselect.emit(children[idx as usize].path().clone());
                 }
             }
         }
@@ -261,14 +277,8 @@ fn ChooseDir(prop: &ChooseDirProps) -> Html {
     }
 }
 
-#[derive(PartialEq, Properties)]
-pub struct TabNameProps {
-    pitou: Pitou,
-    updatedirectory: Callback<Pitou>,
-}
-
 #[function_component]
-pub(super) fn TabName(prop: &TabNameProps) -> Html {
+fn TabName(prop: &AncestorProps) -> Html {
     let style = format! {"
     width: auto;
     height: 100%;
@@ -281,15 +291,17 @@ pub(super) fn TabName(prop: &TabNameProps) -> Html {
     "};
 
     let updatedirectory = {
-        let pitou = prop.pitou.clone();
+        let folder = prop.folder.clone();
         let updatedirectory = prop.updatedirectory.clone();
 
-        move |_| updatedirectory.emit(pitou.clone())
+        move |_| updatedirectory.emit(folder.clone())
     };
+
+    let name = PathBuf::from(prop.folder.file_name().unwrap_or_default()).display().to_string();
 
     html! {
         <div {style}>
-            <span onclick = { updatedirectory }>{ prop.pitou.name() }</span>
+            <span onclick = { updatedirectory }>{ name }</span>
         </div>
     }
 }

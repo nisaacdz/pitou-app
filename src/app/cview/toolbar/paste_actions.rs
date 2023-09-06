@@ -1,10 +1,7 @@
-use std::collections::LinkedList;
-
-use crate::app::{data::selections, invoke, ApplicationContext, ItemsArg, PitouArg, PitouNoArg};
-use backend::Pitou;
-use serde_wasm_bindgen::{from_value, to_value};
 use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
+
+use crate::app::ApplicationContext;
 
 use super::{NameField, TopButtonProps};
 
@@ -19,16 +16,15 @@ pub fn PasteButton(prop: &PasteButtonProps) -> Html {
         theme: _,
         sizes,
         settings: _,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
     let updateui = prop.updateui.clone();
 
     let onclick = move |_| {
         let updateui = updateui.clone();
         crate::app::data::directory()
-            .map(|pitou| {
-                let args = to_value(&PitouArg { pitou }).unwrap();
+            .map(|dir| {
                 spawn_local(async move {
-                    invoke("paste", args).await;
+                    crate::app::tasks::paste(&*dir).await;
                     updateui.emit(());
                 });
             })
@@ -73,19 +69,18 @@ pub fn CopyButton(_prop: &TopButtonProps) -> Html {
         theme: _,
         sizes,
         settings: _,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
 
     let onclick = move |_| {
-        if selections::len() > 0 {
-            let arg = to_value(&ItemsArg {
-                items: &selections::all()
-                    .map(|items| items.collect::<Vec<_>>())
-                    .unwrap_or(Vec::new()),
-            })
-            .unwrap();
-            spawn_local(async move {
-                invoke("copy", arg).await;
-            });
+        if let Some(items) = crate::app::data::all() {
+            let borrow = items.borrow();
+            if borrow.len() > 0 {
+                let arg = crate::app::tasks::to_js_items(borrow.iter());
+
+                spawn_local(async move {
+                    crate::app::tasks::copy(arg).await;
+                });
+            }
         }
     };
 
@@ -127,18 +122,18 @@ pub fn CutButton(_prop: &TopButtonProps) -> Html {
         theme: _,
         sizes,
         settings: _,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
+
     let onclick = move |_| {
-        if selections::len() > 0 {
-            let arg = to_value(&ItemsArg {
-                items: &selections::all()
-                    .map(|items| items.collect::<Vec<_>>())
-                    .unwrap_or(Vec::new()),
-            })
-            .unwrap();
-            spawn_local(async move {
-                invoke("cut", arg).await;
-            });
+        if let Some(items) = crate::app::data::all() {
+            let borrow = items.borrow();
+            if borrow.len() > 0 {
+                let arg = crate::app::tasks::to_js_items(borrow.iter());
+
+                spawn_local(async move {
+                    crate::app::tasks::cut(arg).await;
+                });
+            }
         }
     };
 
@@ -180,7 +175,7 @@ pub fn ClipboardButton(_prop: &TopButtonProps) -> Html {
         theme: _,
         sizes,
         settings: _,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
     let clipboard = use_state(|| None);
 
     let onclick = {
@@ -190,9 +185,7 @@ pub fn ClipboardButton(_prop: &TopButtonProps) -> Html {
             let clipboard = clipboard.clone();
             spawn_local(async move {
                 if let None = &*clipboard {
-                    let arg = to_value(&PitouNoArg {}).unwrap();
-                    let res = invoke("clipboard", arg).await;
-                    let items = from_value::<LinkedList<Vec<Pitou>>>(res).unwrap();
+                    let items = crate::app::tasks::clipboard().await;
                     clipboard.set(Some(items));
                 }
             });

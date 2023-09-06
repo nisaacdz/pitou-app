@@ -22,7 +22,7 @@ pub fn ToolBar(prop: &ToolBarProps) -> Html {
         theme: _,
         sizes,
         settings: _,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
     let size = sizes.toolbar();
 
     let style = format! {"
@@ -70,7 +70,7 @@ pub fn NameField(prop: &NameFieldProp) -> Html {
         theme,
         sizes,
         settings: _,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
 
     let size = sizes.toolbar_namefield();
     let foreground_color = theme.foreground1();

@@ -1,5 +1,3 @@
-use backend::{Pitou, SearchOptions};
-use serde::Serialize;
 use wasm_bindgen::prelude::*;
 use yew::prelude::*;
 
@@ -9,36 +7,9 @@ extern "C" {
     async fn invoke(cmd: &str, args: JsValue) -> JsValue;
 }
 
-#[derive(Serialize)]
-pub(crate) struct PitouArg<'a> {
-    pub pitou: &'a Pitou,
-}
-
-#[derive(Serialize)]
-pub(crate) struct ItemsArg<'a> {
-    pub items: &'a Vec<&'a Pitou>,
-}
-
-#[derive(Serialize)]
-pub(crate) struct PitouAndNameArgs<'a> {
-    pitou: &'a Pitou,
-    name: &'a String,
-}
-
-#[derive(Serialize)]
-pub(crate) struct PitouNoArg;
-
-#[derive(Serialize)]
-pub(crate) struct PitouSearchArgs<'a> {
-    key: &'a String,
-    pitou: &'a Pitou,
-    options: SearchOptions,
-}
-
 mod components;
 mod cview;
 mod home;
-mod pitou;
 mod search;
 mod settings;
 mod view;
@@ -49,14 +20,13 @@ pub mod tasks;
 pub use components::*;
 pub use cview::*;
 pub use home::*;
-pub use pitou::*;
 pub use search::*;
 pub use settings::*;
 pub use view::*;
 
 #[function_component]
 pub fn App() -> Html {
-    let application_ctx = use_state(|| {
+    let application_ctx = use_state_eq(|| {
         let sizes = {
             let window = web_sys::window().unwrap();
 
@@ -72,7 +42,7 @@ pub fn App() -> Html {
         };
 
         let settings = Settings::DEFAULT;
-        let theme = Theme::DEFAULT;
+        let theme = Theme::MAINGPTDARK;
 
         ApplicationContext {
             theme,
@@ -86,7 +56,6 @@ pub fn App() -> Html {
         move |newview| {
             let mut newctx = *application_ctx;
             newctx.settings.view = newview;
-            crate::app::data::selections::clear();
             application_ctx.set(newctx)
         }
     };

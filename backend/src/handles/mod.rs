@@ -1,5 +1,5 @@
 mod options;
-use crate::Pitou;
+use crate::File;
 pub use options::*;
 use serde::{Deserialize, Serialize};
 use std::collections::LinkedList;
@@ -12,8 +12,8 @@ pub use extra::*;
 
 #[derive(Serialize, Deserialize, PartialEq)]
 pub enum SearchMsg {
-    Searching(LinkedList<Pitou>),
-    Terminated(LinkedList<Pitou>),
+    Searching(LinkedList<File>),
+    Terminated(LinkedList<File>),
 }
 
 #[derive(Serialize, Deserialize, PartialEq)]

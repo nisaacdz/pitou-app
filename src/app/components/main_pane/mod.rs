@@ -3,92 +3,18 @@ mod rows;
 mod space;
 
 use crate::app::{ApplicationContext, LoadingDisplay};
-use backend::Pitou;
+use backend::{File, PitouType};
 use dsc::*;
 use rows::*;
 use space::*;
+use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
 
-#[derive(PartialEq)]
-struct Inner {
-    allitems: Vec<Pitou>,
-    selected: Vec<bool>,
-    len_selt: usize,
-}
-
-impl Inner {
-    fn allitems(&self) -> &Vec<Pitou> {
-        &self.allitems
-    }
-
-    fn selected(&self) -> &Vec<bool> {
-        &self.selected
-    }
-
-    fn len_selt(&self) -> usize {
-        self.len_selt
-    }
-
-    fn allitems_mut(&mut self) -> &mut Vec<Pitou> {
-        &mut self.allitems
-    }
-
-    fn selected_mut(&mut self) -> &mut Vec<bool> {
-        &mut self.selected
-    }
-
-    fn len_selt_mut(&mut self) -> &mut usize {
-        &mut self.len_selt
-    }
-}
-
-#[derive(PartialEq)]
-struct Selections {
-    inner: std::rc::Rc<std::cell::RefCell<Inner>>,
-}
-
-impl Selections {
-    fn init(items: &Vec<Pitou>) -> Self {
-        let allitems = items.clone();
-        let selected = vec![false; items.len()];
-        let len_selt = 0;
-
-        Self {
-            inner: std::rc::Rc::new(std::cell::RefCell::new(Inner {
-                allitems,
-                selected,
-                len_selt,
-            })),
-        }
-    }
-
-    fn fully_selected(&self) -> bool {
-        let inner = self.inner.borrow();
-        inner.len_selt() == inner.allitems.len()
-    }
-
-    fn toggle(&self, idx: usize) {
-        let mut inner = self.inner.borrow_mut();
-
-        #[cfg(debug_assertions)]
-        if idx > inner.allitems().len() {
-            panic!("unexpected occurrence, index of selections is out of bounds")
-        }
-
-        inner.selected_mut()[idx] = !inner.selected_mut()[idx];
-
-        if inner.selected_mut()[idx] {
-            *inner.len_selt_mut() += 1;
-        } else {
-            *inner.len_selt_mut() -= 1;
-        }
-    }
-}
-
+use std::{cell::RefCell, collections::HashSet, rc::Rc};
 #[derive(PartialEq, Properties)]
 pub struct MainPaneProps {
-    pub children: Option<Vec<Pitou>>,
-    pub updatedirectory: Callback<Pitou>,
+    pub children: Option<Rc<Vec<File>>>,
+    pub updatedirectory: Callback<File>,
 }
 
 #[function_component]
@@ -96,20 +22,89 @@ pub fn MainPane(prop: &MainPaneProps) -> Html {
     let ApplicationContext {
         theme,
         sizes,
-        settings: _,
-    } = use_context::<ApplicationContext>().unwrap();
-    let force_update = use_force_update();
+        settings,
+    } = use_context().unwrap();
 
-    //let selections = std::rc::Rc::new(prop.children.as_ref().map(|c| vec![false; children]));
-    
+    let selections = use_state(|| {
+        let vals = Rc::new(RefCell::new(HashSet::new()));
+        crate::app::data::init_selections(vals.clone());
+        vals
+    });
+
+    {
+        let selections = selections.clone();
+        let children = prop.children.clone();
+        use_effect_with_deps(
+            move |_| {
+                let newselections = (&*selections).clone();
+                newselections.borrow_mut().clear();
+                selections.set(newselections);
+            },
+            children,
+        );
+    }
+
     let onclick = move |e: MouseEvent| e.prevent_default();
 
     let toggleselect = {
-        move |_idx: usize| ()
+        let selections = selections.clone();
+        let children = prop.children.clone();
+        move |idx: usize| {
+            if let Some(children) = &children {
+                let newselections = (&*selections).clone();
+                let mut borrow = newselections.borrow_mut();
+                if !borrow.remove(&children[idx]) {
+                    borrow.insert(children[idx].clone());
+                }
+                std::mem::drop(borrow);
+                selections.set(newselections);
+            }
+        }
+    };
+
+    let ondbclick = {
+        let updatedirectory = prop.updatedirectory.clone();
+        let children = prop.children.clone();
+
+        move |idx: usize| {
+            if let Some(file) = children.as_ref().map(|v| &v[idx]) {
+                match file.metadata().file_type() {
+                    PitouType::Directory => {
+                        updatedirectory.emit(file.clone());
+                    }
+                    PitouType::File => {
+                        let file = file.clone();
+                        spawn_local(async move {
+                            crate::app::tasks::open(file.path()).await
+                        })
+                    },
+                    PitouType::Link => crate::app::tasks::updatedirectory_with_symlink(
+                        file.path(),
+                        updatedirectory.clone(),
+                    ),
+                }
+            }
+        }
     };
 
     let toggleselectall = {
-        move |_| ()
+        let selections = selections.clone();
+        let children = prop.children.clone();
+        move |_| {
+            if let Some(children) = &children {
+                let newselections = (&*selections).clone();
+                let mut borrow = newselections.borrow_mut();
+                if borrow.len() == children.len() {
+                    borrow.clear();
+                } else {
+                    children.iter().for_each(|child| {
+                        borrow.insert(child.clone());
+                    });
+                }
+                std::mem::drop(borrow);
+                selections.set(newselections);
+            }
+        }
     };
 
     let background_color = theme.background2();
@@ -117,13 +112,14 @@ pub fn MainPane(prop: &MainPaneProps) -> Html {
     let size = sizes.mainpane();
 
     let style = format! {"
+    background-color: {background_color};
     position: relative;
     border: 1px solid {spare_color};
     box-sizing: border-box;
     {size}"};
 
     let top = sizes.dsc().height;
-    let height = sizes.mainpane().height - top;
+    let height = size.height - top;
 
     let inner_style = format! {"
     position: absolute;
@@ -141,25 +137,38 @@ pub fn MainPane(prop: &MainPaneProps) -> Html {
     width: 100%;
     "};
 
+    // if let Some(_) = &*metadata {
+    //     gloo::console::log!("metadata exists");
+    // } else {
+    //     gloo::console::log!("no metadata exists");
+    // }
+
     let content = prop
         .children
         .as_ref()
         .map(|children| children.iter()
             .enumerate()
-            .map(|(idx, pitou)| (idx, pitou.clone(), prop.updatedirectory.clone(), toggleselect.clone(), false))
-            .map(|(idx, pitou, updatedirectory, toggleselect, selected)| html! { <Row {idx} {pitou} {toggleselect} {updatedirectory} {selected} /> })
+            .filter(|(_, file)| settings.filter.include(file))
+            .map(|(idx, file)| (idx, file.clone(), ondbclick.clone(), toggleselect.clone(), selections.borrow().contains(file)))
+            .map(|(idx, file, ondbclick, toggleselect, selected)| html! { <Row {idx} {file} {toggleselect} {ondbclick} {selected}/> })
             .collect::<Html>())
         .map(|entries| html! {
-                <div style = {inner_style}>
-                    { entries }
-                    <FreeArea />
-                </div>
-            })
+            <div style = {inner_style}>
+                { entries }
+                <FreeArea />
+            </div>
+        })
         .unwrap_or(html! { <LoadingScreen /> });
+
+    let selected = prop
+        .children
+        .as_ref()
+        .map(|c| c.len() == selections.borrow().len())
+        .unwrap_or(true);
 
     html! {
         <div {style} {onclick}>
-            <RowDescriptor {toggleselectall} selected = { false }/>
+            <RowDescriptor {toggleselectall} {selected}/>
             { content }
         </div>
     }
@@ -174,6 +183,7 @@ fn LoadingScreen() -> Html {
     align-items: center;
     justify-content: center;
     "};
+
     html! {
         <div {style}>
             <LoadingDisplay />

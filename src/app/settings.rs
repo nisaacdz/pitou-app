@@ -1,3 +1,5 @@
+use backend::Filter;
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Theme {
     background1: Color,
@@ -66,7 +68,7 @@ pub struct Sizes {
     pub(crate) screen_height: i32,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq)]
 pub struct ApplicationContext {
     pub(crate) theme: Theme,
     pub(crate) sizes: Sizes,
@@ -130,9 +132,21 @@ impl Sizes {
         width.into()
     }
 
-    pub fn searchpane(self) -> Rectangle {
-        let width = (20 * self.screen_width) / 25;
-        let height = (87 * self.screen_height) / 100;
+    pub fn diskmeter(self) -> Width {
+        let width = (3 * self.screen_width) / 25;
+        width.into()
+    }
+
+    pub fn diskcmp(self) -> Rectangle {
+        let width = (4 * self.screen_width) / 25;
+        let height = (2 * self.screen_height) / 20;
+
+        Rectangle { width, height }
+    }
+
+    pub fn home_local(self) -> Rectangle {
+        let width = (4 * self.screen_width) / 25;
+        let height = (2 * self.screen_height) / 18;
 
         Rectangle { width, height }
     }
@@ -156,6 +170,16 @@ impl Sizes {
         let height = (4 * self.screen_height) / 100;
 
         Rectangle { width, height }
+    }
+
+    pub fn sidepane_icon(self) -> Width {
+        let width = (3 * self.screen_width) / 125;
+        width.into()
+    }
+
+    pub fn sidepane_filename(self) -> Width {
+        let width = (15 * self.screen_width) / 125;
+        width.into()
     }
 
     pub fn sidepane(self) -> Rectangle {
@@ -193,17 +217,17 @@ impl Sizes {
         Rectangle { width, height }
     }
 
+    pub fn search_input(self) -> Rectangle {
+        let height = (4 * self.screen_height) / 100;
+        let width = (3 * self.screen_width) / 25;
+
+        Rectangle { width, height }
+    }
+
     pub fn row(self) -> Height {
         let height = (6 * self.screen_height) / 100;
 
         height.into()
-    }
-
-    pub fn grid(self) -> Rectangle {
-        let height = (3 * self.screen_height) / 50;
-        let width = self.screen_width / 25;
-
-        Rectangle { width, height }
     }
 
     pub fn row_icon(self) -> Width {
@@ -277,6 +301,43 @@ impl Theme {
         background2: Color(80, 85, 90),
         spare: Color(30, 30, 30),
     };
+    // RICHMOND PICKS THIS ONE
+    pub const LIGHTDEFAULT: Theme = Theme {
+        background1: Color(222, 184, 135),
+        foreground1: Color(0, 0, 0),
+        background2: Color(245, 245, 220),
+        spare: Color(210, 105, 30),
+    };
+
+    pub const MAINLIGHTDEFAULT: Theme = Theme {
+        background1: Color(245, 245, 245),
+        foreground1: Color(0, 0, 0),
+        background2: Color(51, 153, 204),
+        spare: Color(255, 255, 255),
+    };
+
+    pub const MAINGPT: Theme = Theme {
+        //background1: Color(210, 210, 210),
+        background1: Color(180, 180, 180),
+        foreground1: Color(41, 41, 41),
+        background2: Color(235, 235, 255),
+        spare: Color(135, 206, 235),
+    };
+
+    pub const MAINGPTDARK: Theme = Theme {
+        background1: Color(41, 41, 41),
+        foreground1: Color(255, 255, 255),
+        background2: Color(28, 51, 85),
+        //spare: Color(173, 216, 230)
+        spare: Color(0, 0, 0),
+    };
+
+    pub const LIGHTDEFAULT2: Theme = Theme {
+        background1: Color(255, 230, 180),
+        foreground1: Color(0, 0, 0),
+        background2: Color(245, 245, 210),
+        spare: Color(210, 105, 30),
+    };
 
     pub fn get_or_default() -> Self {
         Self::DEFAULT
@@ -299,9 +360,10 @@ impl Theme {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq)]
 pub struct Settings {
     pub(crate) view: AppView,
+    pub(crate) filter: Filter,
     /// How many times to refresh in 1 minute max = 255
     pub(crate) refresh_rate: u8,
 }
@@ -317,6 +379,7 @@ impl Settings {
     pub const DEFAULT: Settings = Settings {
         view: AppView::Explorer,
         refresh_rate: 250,
+        filter: Filter::DEFAULT,
     };
 
     pub fn settings_or_default() -> Self {

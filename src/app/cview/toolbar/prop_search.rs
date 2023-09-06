@@ -9,7 +9,7 @@ pub fn PropertiesButton(_prop: &TopButtonProps) -> Html {
         theme: _,
         sizes,
         settings: _,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
 
     let onclick = { move |_| () };
 
@@ -51,7 +51,7 @@ pub fn SearchButton(_prop: &TopButtonProps) -> Html {
         theme: _,
         sizes,
         settings: _,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
 
     let onclick = { move |_| () };
 

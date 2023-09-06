@@ -1,54 +1,26 @@
 use std::{
-    path::{self, Path, PathBuf},
+    path::PathBuf,
+    sync::Arc,
     time::{Duration, SystemTime},
 };
 
 use chrono::Local;
-use serde::{Deserialize /* Serializer, Deserializer*/, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use sysinfo::{DiskExt, DiskKind};
-
-impl From<Drive> for Pitou {
-    fn from(drive: Drive) -> Self {
-        Self {
-            path: drive.mount_point,
-        }
-    }
-}
-
-impl From<&sysinfo::Disk> for Drive {
-    fn from(drive: &sysinfo::Disk) -> Self {
-        let mount_point = drive.mount_point().into();
-        let is_removable = drive.is_removable();
-        let total_space = drive.total_space();
-        let free_space = drive.available_space();
-        let kind = drive.kind().into();
-        let name = drive.name().to_owned().into();
-
-        Drive {
-            mount_point,
-            total_space,
-            free_space,
-            is_removable,
-            kind,
-            name,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Drive {
+    #[serde(with = "serde_path")]
     pub(crate) mount_point: PathBuf,
     pub(crate) total_space: u64,
     pub(crate) free_space: u64,
     pub(crate) is_removable: bool,
     pub(crate) kind: DriveKind,
-    pub(crate) name: PathBuf,
+    pub(crate) name: String,
 }
 
 impl Drive {
-    pub fn name(&self) -> &std::ffi::OsStr {
-        &self.name.as_os_str()
+    pub fn name(&self) -> &str {
+        &self.name
     }
 
     pub fn is_removable(&self) -> bool {
@@ -72,43 +44,139 @@ impl Drive {
     }
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub enum DriveKind {
     HDD,
     SSD,
-    Unkown(isize),
+    Unkown,
 }
 
-impl From<sysinfo::DiskKind> for DriveKind {
-    fn from(kind: sysinfo::DiskKind) -> Self {
-        match kind {
-            DiskKind::HDD => DriveKind::HDD,
-            DiskKind::SSD => DriveKind::SSD,
-            DiskKind::Unknown(val) => DriveKind::Unkown(val),
+#[repr(transparent)]
+#[derive(Clone, PartialEq)]
+pub struct Path {
+    inner: PathBuf,
+}
+
+impl AsRef<std::path::Path> for Path {
+    fn as_ref(&self) -> &std::path::Path {
+        &self.inner
+    }
+}
+
+impl From<PathBuf> for Path {
+    fn from(inner: PathBuf) -> Self {
+        Self { inner }
+    }
+}
+
+impl Path {
+    pub fn into_inner(self) -> PathBuf {
+        self.inner
+    }
+}
+
+#[cfg(debug_assertions)]
+mod dbg_impl {
+    use super::Path;
+    impl Path {
+        pub fn display(&self) -> String {
+            self.inner.display().to_string()
         }
     }
 }
 
-#[allow(unused)]
-pub struct WithMetadata {
-    pitou: Pitou,
-    metadata: Metadata,
+impl AsRef<Path> for PathBuf {
+    fn as_ref(&self) -> &Path {
+        // This is completely safe because the returned reference is only valid for as long as the lifetime on self
+        // This is equivalent to having two immutable pointers to the same memory location
+        unsafe { &*(self as *const PathBuf as *const Path) }
+    }
 }
 
-impl WithMetadata {
+#[test]
+fn test_as_ref_of_path_for_path_buf() {
+    let pb = PathBuf::from("d:/workspace/apps");
+    println!("original, {}", pb.display());
+    let path: &Path = pb.as_ref();
+    println!("calling a function on inner PathBuf: {}", path.display());
+    println!("original as ref of Path {}", path.inner.display());
+}
+
+impl Serialize for Path {
+    fn serialize<S: Serializer>(&self, sz: S) -> Result<S::Ok, S::Error> {
+        serde_path::serialize(&self.inner, sz)
+    }
+}
+
+impl<'d> Deserialize<'d> for Path {
+    fn deserialize<D: Deserializer<'d>>(dz: D) -> Result<Self, D::Error> {
+        let path = serde_path::deserialize(dz)?;
+        Ok(path.into())
+    }
+}
+
+#[derive(Clone)]
+pub struct File {
+    inner: Arc<Inner>,
+}
+
+impl PartialEq for File {
+    fn eq(&self, other: &Self) -> bool {
+        self.path() == other.path()
+    }
+}
+
+impl Eq for File {
+    
+}
+
+
+impl Serialize for File {
+    fn serialize<S: Serializer>(&self, sz: S) -> Result<S::Ok, S::Error> {
+        self.inner.serialize(sz)
+    }
+}
+
+impl<'d> Deserialize<'d> for File {
+    fn deserialize<D: Deserializer<'d>>(dz: D) -> Result<Self, D::Error> {
+        let inner = Inner::deserialize(dz)?;
+        Ok(Self {
+            inner: Arc::new(inner),
+        })
+    }
+}
+
+#[derive(PartialEq, Clone, Serialize, Deserialize)]
+pub struct Inner {
+    #[serde(with = "serde_path")]
+    pub(crate) path: PathBuf,
+    pub(crate) metadata: Metadata,
+}
+
+use std::hash::{Hash, Hasher};
+impl Hash for File {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.inner.path().hash(state)
+    }
+}
+
+impl Inner {
+    pub fn path(&self) -> &PathBuf {
+        &self.path
+    }
     pub fn metadata(&self) -> &Metadata {
         &self.metadata
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Hash, Serialize, Deserialize)]
-pub struct Pitou {
-    #[serde(with = "serde_path")]
-    pub(crate) path: PathBuf,
+impl std::fmt::Debug for File {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.inner.path.display())
+    }
 }
 
 mod serde_path {
-    use super::{path, PathBuf};
+    use std::path::{self, PathBuf};
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
     pub fn serialize<S: Serializer>(path: &PathBuf, sz: S) -> Result<S::Ok, S::Error> {
@@ -126,46 +194,42 @@ mod serde_path {
     }
 }
 
-impl Pitou {
+impl File {
+    pub fn new(path: PathBuf, metadata: Metadata) -> Self {
+        let inner = Arc::new(Inner { path, metadata });
+
+        Self { inner }
+    }
+    
+    pub fn metadata(&self) -> &Metadata {
+        self.inner.metadata()
+    }
+
     pub fn path(&self) -> &PathBuf {
-        &self.path
+        &self.inner.path()
     }
 
-    pub fn name(&self) -> String {
+    pub fn name(&self) -> &str {
         if self.path().as_os_str().len() == 0 {
-            String::from("Drives")
+            Default::default()
         } else {
-            match self.path().file_name().unwrap().to_str() {
-                Some(v) => v.to_string(),
-                None => String::new(),
-            }
+            self.path()
+                .file_name()
+                .map(|v| v.to_str().map(|v| v).unwrap_or_default())
+                .unwrap_or_default()
         }
     }
 
-    pub fn ancestors(&self) -> Vec<Pitou> {
-        self.path().ancestors().map(|path| path.into()).collect()
+    pub fn ancestors(&self) -> impl Iterator<Item = &std::path::Path> {
+        self.inner.path().ancestors()
     }
 }
 
-impl From<PathBuf> for Pitou {
-    fn from(path: PathBuf) -> Self {
-        Self { path }
-    }
-}
-
-impl From<&Path> for Pitou {
-    fn from(value: &Path) -> Self {
-        Self {
-            path: PathBuf::from(value),
-        }
-    }
-}
-
-impl Into<PathBuf> for Pitou {
-    fn into(self) -> PathBuf {
-        self.path
-    }
-}
+// impl Into<PathBuf> for Pitou {
+//     fn into(self) -> PathBuf {
+//         self.path
+//     }
+// }
 
 // backend = { path = "./backend" }
 // backend = { path = "../backend" features = ["tauri"] }
@@ -227,7 +291,7 @@ impl DateTime {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Debug)]
 pub enum PitouType {
     Directory,
     File,
@@ -281,6 +345,12 @@ pub struct Metadata {
     pub(crate) filetype: PitouType,
 }
 
+impl std::fmt::Debug for Metadata {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write! {f, "{:?}", self.filetype}
+    }
+}
+
 impl Metadata {
     pub fn len(&self) -> u64 {
         self.len
@@ -288,6 +358,14 @@ impl Metadata {
 
     pub fn is_dir(&self) -> bool {
         self.filetype.is_dir()
+    }
+
+    pub fn is_file(&self) -> bool {
+        self.filetype.is_file()
+    }
+
+    pub fn is_link(&self) -> bool {
+        self.filetype.is_link()
     }
 
     pub fn accessed(&self) -> Option<DateTime> {
@@ -303,18 +381,14 @@ impl Metadata {
     }
 }
 
-#[derive(Clone, Copy)]
-pub enum Filter {
-    System,
-    DotHidden,
-    Locked,
-}
-
-#[derive(Clone, Copy)]
-pub enum Sort {
-    Name(bool),
-    Modified(bool),
-    Accessed(bool),
+#[derive(PartialEq, Clone, Serialize, Deserialize)]
+pub struct Locals {
+    pub downloads: File,
+    pub audios: File,
+    pub documents: File,
+    pub videos: File,
+    pub desktop: File,
+    pub pictures: File,
 }
 
 mod error;

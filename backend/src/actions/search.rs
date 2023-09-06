@@ -1,7 +1,7 @@
-use std::sync::Arc;
-use tokio::{fs, sync::Mutex, task::JoinHandle};
+use std::{path::PathBuf, sync::Arc};
+use tokio::{fs, task::JoinHandle};
 
-use crate::{KeyType, Pitou, SearchArea, SearchMsg, SearchOptions, SearchStream, StrOps};
+use crate::{Get, KeyType, SearchArea, SearchMsg, SearchOptions, SearchStream, StrOps};
 
 macro_rules! should_include {
     ($filetype:expr, $options:expr, $file_name:expr, $key:expr) => {
@@ -41,26 +41,6 @@ macro_rules! should_include {
     };
 }
 
-pub async fn test_me() {
-    let search_in = std::path::PathBuf::from("D:\\Workspace\\").into();
-    let search_key = "new".to_owned();
-    let options = SearchOptions::new().depth(4);
-
-    let clock = std::time::Instant::now();
-
-    let results = search(search_key, search_in, options).await;
-
-    println!(
-        "finished searching. Total seconds ellapsed = {}",
-        clock.elapsed().as_secs()
-    );
-
-    for (idx, res) in results.into_iter().enumerate() {
-        let idx = idx + 1;
-        println!("{idx}. {} \n", res.path().display());
-    }
-}
-
 static mut SEARCH_STREAM: Option<SearchStream> = None;
 static mut STREAM_HANDLE: Option<JoinHandle<()>> = None;
 
@@ -73,16 +53,16 @@ pub async fn test_tokio_spawn() {
     .unwrap();
 }
 
-pub async fn read_search_stream() -> Option<SearchMsg> {
+pub fn read_search_stream() -> Option<SearchMsg> {
     unsafe {
         match &mut SEARCH_STREAM {
-            Some(stream) => Some(stream.pull().await),
+            Some(stream) => Some(stream.pull()),
             None => None,
         }
     }
 }
 
-pub async fn reset_search_stream() {
+pub fn reset_search_stream() {
     unsafe {
         if let Some(val) = STREAM_HANDLE.take() {
             val.abort();
@@ -91,7 +71,7 @@ pub async fn reset_search_stream() {
     }
 }
 
-pub fn stream_search(key: String, search_in: Pitou, options: SearchOptions) {
+pub fn search(key: String, search_in: PathBuf, options: SearchOptions) {
     unsafe {
         match &mut SEARCH_STREAM {
             Some(_) => return,
@@ -101,9 +81,9 @@ pub fn stream_search(key: String, search_in: Pitou, options: SearchOptions) {
                 let key = Arc::new(key);
 
                 let handle = tokio::spawn(async move {
-                    recursive_stream_search(stream.clone(), key, search_in, options).await;
+                    recursive_search(stream.clone(), key, search_in, options).await;
                     STREAM_HANDLE.as_mut().unwrap().abort();
-                    stream.terminate().await;
+                    stream.terminate();
                 });
 
                 STREAM_HANDLE = Some(handle);
@@ -113,15 +93,15 @@ pub fn stream_search(key: String, search_in: Pitou, options: SearchOptions) {
 }
 
 #[async_recursion::async_recursion]
-async fn recursive_stream_search(
+async fn recursive_search(
     stream: SearchStream,
     key: Arc<String>,
-    search_in: Pitou,
+    search_in: PathBuf,
     mut options: SearchOptions,
 ) {
     options.depth -= 1;
 
-    if stream.ended().await {
+    if stream.ended() {
         return;
     }
 
@@ -150,7 +130,7 @@ async fn recursive_stream_search(
             };
 
             if should_include!(filetype, options, file_name, key) {
-                if !stream.push(de.path().into()).await {
+                if !stream.push(de.path().get().expect("couldn't parse path")) {
                     return;
                 }
             }
@@ -158,8 +138,9 @@ async fn recursive_stream_search(
             if filetype.is_dir() && options.depth > 0 {
                 let stream = stream.clone();
                 let key = key.clone();
+                let path = de.path();
                 tasks.push(tokio::spawn(async move {
-                    recursive_stream_search(stream, key, de.path().into(), options).await
+                    recursive_search(stream, key, path, options).await
                 }));
             }
         }
@@ -170,90 +151,4 @@ async fn recursive_stream_search(
     for task in tasks {
         task.await.unwrap();
     }
-}
-
-pub async fn search(key: String, search_in: Pitou, options: SearchOptions) -> Vec<Pitou> {
-    let res = Arc::new(Mutex::new(Vec::new()));
-    let key = Arc::new(key);
-
-    recursive_search(res.clone(), key, search_in, options).await;
-
-    Arc::into_inner(res).unwrap().into_inner()
-}
-
-#[async_recursion::async_recursion]
-pub async fn recursive_search(
-    finds: Arc<Mutex<Vec<Pitou>>>,
-    key: Arc<String>,
-    search_in: Pitou,
-    mut options: SearchOptions,
-) {
-    options.depth -= 1;
-
-    #[cfg(debug_assertions)]
-    println!("now looking in {}", search_in.path().display());
-
-    let mut tasks = Vec::new();
-
-    if let Ok(mut rd) = fs::read_dir(search_in).await {
-        while let Ok(Some(de)) = rd.next_entry().await {
-            let name = de.file_name();
-
-            let file_name = if let Some(name) = name.to_str() {
-                name
-            } else if options.skip_errors {
-                continue;
-            } else {
-                todo!()
-            };
-
-            let filetype = if let Ok(filetype) = de.file_type().await {
-                filetype
-            } else if options.skip_errors {
-                continue;
-            } else {
-                todo!()
-            };
-
-            if should_include!(filetype, options, file_name, key) {
-                finds.lock().await.push(de.path().into())
-            }
-
-            if filetype.is_dir() && options.depth > 0 {
-                let finds = finds.clone();
-                let key = key.clone();
-                tasks.push(tokio::spawn(async move {
-                    recursive_search(finds, key, de.path().into(), options).await
-                }));
-            }
-        }
-    } else if !options.skip_errors {
-        todo!()
-    }
-
-    for task in tasks {
-        task.await.unwrap();
-    }
-}
-
-pub async fn search_eq_1(search_in: Pitou, key: String) -> Arc<Mutex<Vec<Pitou>>> {
-    let items = Arc::new(Mutex::new(Vec::new()));
-    {
-        let items = items.clone();
-        tokio::spawn(async move {
-            if let Ok(mut rd) = fs::read_dir(search_in).await {
-                let items = items.clone();
-                while let Ok(Some(de)) = rd.next_entry().await {
-                    if let Some(str_val) = de.file_name().to_str() {
-                        if str_val.starts_with(&key) {
-                            items.lock().await.push(de.path().into());
-                        }
-                    }
-                }
-            }
-        })
-        .await
-        .unwrap();
-    }
-    items
 }

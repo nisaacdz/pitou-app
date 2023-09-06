@@ -1,4 +1,4 @@
-use backend::Pitou;
+use backend::File;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
@@ -6,7 +6,7 @@ use crate::app::ApplicationContext;
 
 #[derive(PartialEq, Properties)]
 pub struct RenamePopUpProps {
-    pub file: Pitou,
+    pub file: File,
     pub onclickok: Callback<String>,
     pub onclickcancel: Callback<()>,
 }
@@ -15,9 +15,9 @@ pub struct RenamePopUpProps {
 pub fn RenamePopUp(prop: &RenamePopUpProps) -> Html {
     let ApplicationContext {
         theme,
-        sizes,
+        sizes: _,
         settings: _,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
     let input_ref = use_node_ref();
 
     let border_color = theme.spare();

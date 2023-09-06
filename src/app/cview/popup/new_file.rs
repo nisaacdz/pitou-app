@@ -1,5 +1,4 @@
-use backend::Pitou;
-use serde::Serialize;
+use std::{path::PathBuf, rc::Rc};
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
@@ -7,24 +6,18 @@ use crate::app::ApplicationContext;
 
 #[derive(PartialEq, Properties)]
 pub struct NewFilePopUpProps {
-    pub directory: Pitou,
+    pub directory: Rc<PathBuf>,
     pub onclickok: Callback<String>,
     pub onclickcancel: Callback<()>,
-}
-
-#[derive(Serialize)]
-struct NewFileArgs<'a> {
-    pitou: &'a Pitou,
-    name: &'a String,
 }
 
 #[function_component]
 pub fn NewFilePopUp(prop: &NewFilePopUpProps) -> Html {
     let ApplicationContext {
         theme,
-        sizes,
+        sizes: _,
         settings: _,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
     let input_ref = use_node_ref();
 
     let border_color = theme.spare();
@@ -35,7 +28,7 @@ pub fn NewFilePopUp(prop: &NewFilePopUpProps) -> Html {
     border: 2px solid {border_color};
     "};
 
-    let folder_name = prop.directory.name();
+    let folder_name = prop.directory.file_name().map(|v| v.to_str().unwrap_or_default()).unwrap_or_default();
     let oldname = format! {"Create new file in: {folder_name}"};
 
     let onclick = |e: MouseEvent| e.stop_propagation();

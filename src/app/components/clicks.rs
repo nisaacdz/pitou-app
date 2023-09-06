@@ -1,8 +1,7 @@
-use crate::app::PitouProps;
 use yew::prelude::*;
 
 #[function_component]
-pub fn RightClickMenu(_prop: &PitouProps) -> Html {
+pub fn RightClickMenu() -> Html {
     html! {
         <div>
             <Cut />

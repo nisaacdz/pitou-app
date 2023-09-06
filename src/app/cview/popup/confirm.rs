@@ -1,25 +1,47 @@
+use wasm_bindgen::JsValue;
+use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
+use std::{rc::Rc, cell::RefCell};
 
 use crate::app::ApplicationContext;
 
 #[derive(PartialEq, Properties)]
-pub struct ConfirmProps {
+pub struct ConfirmDeleteProps {
+    pub deletedata: Rc<RefCell<Option<JsValue>>>,
     pub prompt: String,
     pub cancel: Callback<()>,
-    pub confirm: Callback<()>,
+    pub updateui: Callback<()>,
 }
 
 #[function_component]
-pub fn Confirm(prop: &ConfirmProps) -> Html {
+pub fn ConfirmDelete(prop: &ConfirmDeleteProps) -> Html {
     let ApplicationContext {
         theme,
-        sizes,
+        sizes: _,
         settings: _,
-    } = use_context::<ApplicationContext>().unwrap();
+    } = use_context().unwrap();
 
     let onclickcancel = {
         let cancel = prop.cancel.clone();
         move |_| cancel.emit(())
+    };
+
+    let onsubmit = {
+        let deletedata = prop.deletedata.clone();
+        let cancel = prop.cancel.clone();
+        let updateui = prop.updateui.clone();
+        move |e: SubmitEvent| {
+            e.prevent_default();
+            if let Some(arg) = deletedata.borrow_mut().take() {
+                let updateui = updateui.clone();
+                spawn_local(async move {
+                    crate::app::tasks::delete(arg).await;
+                    updateui.emit(())
+                });
+            } else {
+                cancel.emit(())
+            }
+        }
     };
 
     let onclick = move |e: MouseEvent| e.stop_propagation();
@@ -31,11 +53,6 @@ pub fn Confirm(prop: &ConfirmProps) -> Html {
     background-color: {background_color};
     border: 2px solid {border_color};
     "};
-
-    let onclickconfirm = {
-        let confirm = prop.confirm.clone();
-        move |_| confirm.emit(())
-    };
 
     let buttons_style = format! {"
     height: 15%;
@@ -54,10 +71,10 @@ pub fn Confirm(prop: &ConfirmProps) -> Html {
     html! {
         <div {style} class = {"popup"} {onclick}>
             <span>{ prop.prompt.clone() }</span>
-            <div style = {buttons_style}>
+            <form {onsubmit} style = {buttons_style}>
                 <button onclick={onclickcancel} style = {button2_style}>{ "Cancel" }</button>
-                <button onclick={onclickconfirm} style = {button1_style}>{ "Confirm" }</button>
-            </div>
+                <button type="submit" style = {button1_style}>{ "Confirm" }</button>
+            </form>
         </div>
     }
 }
