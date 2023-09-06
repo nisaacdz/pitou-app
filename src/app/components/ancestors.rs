@@ -300,8 +300,8 @@ fn TabName(prop: &AncestorProps) -> Html {
     let name = PathBuf::from(prop.folder.file_name().unwrap_or_default()).display().to_string();
 
     html! {
-        <div {style}>
-            <span onclick = { updatedirectory }>{ name }</span>
+        <div {style} onclick = { updatedirectory }>
+            <span>{ name }</span>
         </div>
     }
 }

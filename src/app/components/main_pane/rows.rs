@@ -1,7 +1,4 @@
-use crate::{
-    app::{AppView, ApplicationContext, DirIcon, FileIcon, SymLinkIcon},
-    background_color,
-};
+use crate::app::{AppView, ApplicationContext, DirIcon, FileIcon, SymLinkIcon};
 
 use backend::{DateTime, File, PitouType};
 use yew::prelude::*;
@@ -18,22 +15,10 @@ pub struct RowProps {
 #[function_component]
 pub fn Row(prop: &RowProps) -> Html {
     let ApplicationContext {
-        theme,
+        theme: _,
         sizes,
         settings: _,
     } = use_context().unwrap();
-
-    let is_hovered = use_state_eq(|| false);
-
-    let onmouseover = {
-        let is_hovered = is_hovered.clone();
-        move |_| is_hovered.set(true)
-    };
-
-    let onmouseout = {
-        let is_hovered = is_hovered.clone();
-        move |_| is_hovered.set(false)
-    };
 
     let ondblclick = {
         let ondbclick = prop.ondbclick.clone();
@@ -52,8 +37,6 @@ pub fn Row(prop: &RowProps) -> Html {
             func.emit(idx);
         }
     };
-
-    let hover_background = theme.background1();
     let height = sizes.row();
 
     let style = format! {"
@@ -61,8 +44,7 @@ pub fn Row(prop: &RowProps) -> Html {
     gap: 0;
     font-size: 90%;
     {height}
-    width: auto;
-    {}", background_color!(prop.selected || *is_hovered, hover_background) };
+    width: auto;"};
 
     let onclick = {
         let toggleselect = toggleselect.clone();
@@ -73,7 +55,7 @@ pub fn Row(prop: &RowProps) -> Html {
     let filetype = prop.file.metadata().file_type();
 
     html! {
-        <div {style} {onmouseover} {onmouseout} {onclick} {ondblclick}>
+        <div class = "row" {style} {onclick} {ondblclick}>
             <CheckBox ontoggle = {toggleselect} ischecked = { prop.selected } />
             <FileIconCmp {filetype} />
             <FileName file = { prop.file.clone() }/>

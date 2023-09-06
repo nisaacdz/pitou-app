@@ -47,6 +47,7 @@ pub struct Rectangle {
 }
 
 impl Rectangle {
+    #[allow(unused)]
     pub fn width(self) -> Width {
         Width { value: self.width }
     }

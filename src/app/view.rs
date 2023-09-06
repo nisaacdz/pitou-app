@@ -24,6 +24,7 @@ pub fn ContentView(prop: &ContentViewProp) -> Html {
     let size = sizes.screen();
 
     let style = format! {"
+    --row-hover-color: {background_color};
     --scrollbar-thumb: {background_color};
     background-color: {background_color};
     margin: 0% 0% 0% 0%;

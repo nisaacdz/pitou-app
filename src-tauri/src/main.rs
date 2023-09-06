@@ -32,6 +32,7 @@ fn main() {
             drives,
             locals,
             read_link,
+            retrieve,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

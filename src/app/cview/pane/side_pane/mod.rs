@@ -23,7 +23,7 @@ pub fn SidePane(prop: &SidePaneProps) -> Html {
     let ApplicationContext {
         theme,
         sizes,
-        settings: _,
+        settings,
     } = use_context().unwrap();
 
     let filter = use_state(|| None);
@@ -91,7 +91,17 @@ pub fn SidePane(prop: &SidePaneProps) -> Html {
                         crate::app::tasks::open(file.path()).await
                     })
                 },
-                PitouType::Link => todo!(),
+                PitouType::Link => {
+                    let symlink = file.clone();
+                    let updatedirectory = updatedirectory.clone();
+                    spawn_local(async move {
+                        if let Some(file) = crate::app::tasks::read_link(symlink.path()).await {
+                            let parent_dir = PathBuf::from(file.path().parent().unwrap_or(std::path::Path::new("")));
+                            crate::app::data::persist(file.clone());
+                            updatedirectory.emit(parent_dir);
+                        }
+                    })
+                },
             }
     });
 
@@ -104,6 +114,7 @@ pub fn SidePane(prop: &SidePaneProps) -> Html {
     let content = if let Some(files) = prop.siblings.as_ref() {
         let entries = files
             .iter()
+            .filter(|file| settings.filter.include(file))
             .filter(|item| {
                 use backend::StrOps;
                 filter.as_ref().map(|pat| item.name().starts_with_ignore_case(pat)).unwrap_or(true)

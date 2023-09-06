@@ -224,6 +224,10 @@ flex-wrap: wrap;
 justify-content: space-evenly;
 }
 
+.row:hover {
+  background-color: var(--row-hover-color);
+}
+
 
 .test_me_rm {
   justify-content: first baseline;

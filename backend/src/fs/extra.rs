@@ -109,6 +109,10 @@ impl File {
         }
     }
 
+    pub fn retrieve(path: PathBuf) -> Option<Self> {
+        path.get().ok()
+    }
+
     pub fn home_directory() -> PathBuf {
         dirs::home_dir().unwrap().into()
     }

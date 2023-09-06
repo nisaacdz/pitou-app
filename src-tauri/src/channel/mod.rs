@@ -38,8 +38,13 @@ pub fn open(path: Path) {
 }
 
 #[tauri::command]
-pub async fn read_link(path: Path) -> Option<Path> {
+pub async fn read_link(path: Path) -> Option<File> {
     backend::actions::read_link(path.into_inner()).await
+}
+
+#[tauri::command]
+pub fn retrieve(path: Path) -> Option<File> {
+    backend::File::retrieve(path.into_inner())
 }
 
 #[tauri::command]

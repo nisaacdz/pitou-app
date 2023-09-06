@@ -3,6 +3,8 @@ pub mod clipboard;
 #[cfg(feature = "tauri")]
 mod search;
 
+use crate::fs::Get;
+
 use std::path::PathBuf;
 
 #[cfg(feature = "tauri")]
@@ -63,6 +65,6 @@ pub async fn create_dir(dir: PathBuf) {
     fs::create_dir(dir).await.expect("couldn't create dir");
 }
 
-pub async fn read_link(link: PathBuf) -> Option<Path> {
-    fs::read_link(link).await.map(|v| v.into()).ok()
+pub async fn read_link(link: PathBuf) -> Option<crate::File> {
+    fs::read_link(link).await.map(|v| v.get().ok()).unwrap_or(None)
 }

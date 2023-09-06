@@ -1,10 +1,7 @@
 use backend::File;
 use yew::prelude::*;
 
-use crate::{
-    app::{ApplicationContext, DirIcon, FileIcon, SymLinkIcon},
-    background_color,
-};
+use crate::app::{ApplicationContext, DirIcon, FileIcon, SymLinkIcon};
 
 #[derive(PartialEq, Properties)]
 pub struct SidePaneRowProps {
@@ -20,26 +17,11 @@ pub fn SidePaneRow(prop: &SidePaneRowProps) -> Html {
         sizes,
         settings: _,
     } = use_context().unwrap();
-    let hovered = use_state_eq(|| false);
-
-    let onmouseover = {
-        let hovered = hovered.clone();
-        move |_| {
-            hovered.set(true);
-        }
-    };
 
     let onclick = {
         let onclick = prop.onclick.clone();
         let file = prop.file.clone();
         move |_| onclick.emit(file.clone())
-    };
-
-    let onmouseout = {
-        let hovered = hovered.clone();
-        move |_| {
-            hovered.set(false);
-        }
     };
 
     let foreground_color = theme.foreground1();
@@ -54,13 +36,12 @@ pub fn SidePaneRow(prop: &SidePaneRowProps) -> Html {
     font-size: 90%;
     color: {foreground_color};
     font-family: monospace;
-    width: 100%;
-    {}", background_color!(*hovered || prop.selected, theme.background1()) };
+    width: 100%;"};
 
     let filetype = prop.file.metadata().file_type();
 
     html! {
-        <div {style} {onmouseover} {onmouseout} {onclick}>
+        <div class = "row" {style} {onclick}>
             <FileIconCmp {filetype} />
             <SidePaneFileName file = { prop.file.clone() } />
         </div>

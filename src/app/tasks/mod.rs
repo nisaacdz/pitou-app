@@ -3,7 +3,6 @@ use std::{path::PathBuf, cell::RefCell, collections::LinkedList};
 use backend::{File, SearchMsg, Path, SearchOptions, Locals, Drive};
 use serde_wasm_bindgen::{from_value, to_value};
 use wasm_bindgen::JsValue;
-use yew::Callback;
 use super::invoke;
 
 use serde::Serialize;
@@ -141,27 +140,17 @@ pub async fn drives() -> Vec<Drive> {
     from_value(jsval).unwrap()
 }
 
-pub fn updatedirectory_with_symlink(link: &PathBuf, updatedirectory: Callback<File>) {
-    // let arg = to_value(&PitouArg { pitou: link }).unwrap();
-    // spawn_local(async move {
-    //     let res = from_value::<Option<Pitou>>(invoke("read_link", arg).await).unwrap();
-    //     if let Some(pitou) = &res {
-    //         let metadata = from_value::<Option<Metadata>>(
-    //             invoke("metadata", to_value(&PitouArg { pitou }).unwrap()).await,
-    //         )
-    //         .unwrap();
-    //         if let Some(metadata) = &metadata {
-    //             match metadata.file_type() {
-    //                 backend::PitouType::Directory => updatedirectory.emit(pitou.clone()),
-    //                 backend::PitouType::File => open_local(pitou),
-    //                 backend::PitouType::Link => {
-    //                     updatedirectory_with_symlink(pitou, updatedirectory)
-    //                 }
-    //             }
-    //         }
-    //     }
-    // });
-    todo!()
+/// returns the file that this sumbolic link points to along with the directory and also return
+pub async fn read_link(path: &PathBuf) -> Option<File> {
+    let arg = to_value(&PathArg { path: path.as_ref() }).unwrap();
+    let js_res = invoke("read_link", arg).await;
+    from_value(js_res).unwrap()
+}
+
+pub async fn retrieve(path: &PathBuf) -> Option<File> {
+    let arg = to_value(&PathArg { path: path.as_ref() }).unwrap();
+    let js_res = invoke("retrieve", arg).await;
+    from_value(js_res).unwrap()
 }
 
 pub async fn terminate_search_stream() {

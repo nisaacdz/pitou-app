@@ -10,7 +10,7 @@ use space::*;
 use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
 
-use std::{cell::RefCell, collections::HashSet, rc::Rc};
+use std::{cell::RefCell, collections::HashSet, rc::Rc, path::PathBuf};
 #[derive(PartialEq, Properties)]
 pub struct MainPaneProps {
     pub children: Option<Rc<Vec<File>>>,
@@ -37,7 +37,10 @@ pub fn MainPane(prop: &MainPaneProps) -> Html {
         use_effect_with_deps(
             move |_| {
                 let newselections = (&*selections).clone();
-                newselections.borrow_mut().clear();
+                let mut borrow = newselections.borrow_mut();
+                borrow.clear();
+                borrow.extend(crate::app::data::get_persistent());
+                std::mem::drop(borrow);
                 selections.set(newselections);
             },
             children,
@@ -78,10 +81,19 @@ pub fn MainPane(prop: &MainPaneProps) -> Html {
                             crate::app::tasks::open(file.path()).await
                         })
                     },
-                    PitouType::Link => crate::app::tasks::updatedirectory_with_symlink(
-                        file.path(),
-                        updatedirectory.clone(),
-                    ),
+                    PitouType::Link => {
+                        let file = file.clone();
+                        let updatedirectory = updatedirectory.clone();
+                        spawn_local(async move {
+                            if let Some(file) = crate::app::tasks::read_link(file.path()).await {
+                                let parent_dir = PathBuf::from(file.path().parent().unwrap_or(std::path::Path::new("")));
+                                if let Some(parent_file) = crate::app::tasks::retrieve(&parent_dir).await {
+                                    crate::app::data::persist(file.clone());
+                                    updatedirectory.emit(parent_file);
+                                }
+                            }
+                        })
+                    },
                 }
             }
         }
