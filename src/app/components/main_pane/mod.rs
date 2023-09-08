@@ -10,19 +10,25 @@ use space::*;
 use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
 
-use std::{cell::RefCell, collections::HashSet, rc::Rc, path::PathBuf};
+use std::{cell::RefCell, collections::HashSet, path::PathBuf, rc::Rc};
 #[derive(PartialEq, Properties)]
 pub struct MainPaneProps {
     pub children: Option<Rc<Vec<File>>>,
     pub updatedirectory: Callback<File>,
 }
 
+// impl PartialEq for MainPaneProps {
+//     fn eq(&self, _other: &Self) -> bool {
+//         false
+//     }
+// }
+
 #[function_component]
 pub fn MainPane(prop: &MainPaneProps) -> Html {
     let ApplicationContext {
         theme,
         sizes,
-        settings,
+        settings: _,
     } = use_context().unwrap();
 
     let selections = use_state(|| {
@@ -77,23 +83,25 @@ pub fn MainPane(prop: &MainPaneProps) -> Html {
                     }
                     PitouType::File => {
                         let file = file.clone();
-                        spawn_local(async move {
-                            crate::app::tasks::open(file.path()).await
-                        })
-                    },
+                        spawn_local(async move { crate::app::tasks::open(file.path()).await })
+                    }
                     PitouType::Link => {
                         let file = file.clone();
                         let updatedirectory = updatedirectory.clone();
                         spawn_local(async move {
                             if let Some(file) = crate::app::tasks::read_link(file.path()).await {
-                                let parent_dir = PathBuf::from(file.path().parent().unwrap_or(std::path::Path::new("")));
-                                if let Some(parent_file) = crate::app::tasks::retrieve(&parent_dir).await {
+                                let parent_dir = PathBuf::from(
+                                    file.path().parent().unwrap_or(std::path::Path::new("")),
+                                );
+                                if let Some(parent_file) =
+                                    crate::app::tasks::retrieve(&parent_dir).await
+                                {
                                     crate::app::data::persist(file.clone());
                                     updatedirectory.emit(parent_file);
                                 }
                             }
                         })
-                    },
+                    }
                 }
             }
         }
@@ -104,6 +112,7 @@ pub fn MainPane(prop: &MainPaneProps) -> Html {
         let children = prop.children.clone();
         move |_| {
             if let Some(children) = &children {
+                gloo::console::log!("toggle select all invoked");
                 let newselections = (&*selections).clone();
                 let mut borrow = newselections.borrow_mut();
                 if borrow.len() == children.len() {
@@ -160,7 +169,6 @@ pub fn MainPane(prop: &MainPaneProps) -> Html {
         .as_ref()
         .map(|children| children.iter()
             .enumerate()
-            .filter(|(_, file)| settings.filter.include(file))
             .map(|(idx, file)| (idx, file.clone(), ondbclick.clone(), toggleselect.clone(), selections.borrow().contains(file)))
             .map(|(idx, file, ondbclick, toggleselect, selected)| html! { <Row {idx} {file} {toggleselect} {ondbclick} {selected}/> })
             .collect::<Html>())

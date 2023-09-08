@@ -177,19 +177,19 @@ pub fn SearchOptionsCmp(prop: &SearchOptionsCmpProp) -> Html {
                 <div class="form-item">
                     <label>
                         {"Files"}
-                        <input class="checkbox-input" type="checkbox" checked={(&*options).include_files} onchange={toggleincludefiles} />
+                        <input class="checkbox-input" type="checkbox" checked={(&*options).filter.file} onchange={toggleincludefiles} />
                     </label>
                 </div>
                 <div class="form-item">
                     <label>
                         {"Folders"}
-                        <input class="checkbox-input" type="checkbox" checked={(&*options).include_dirs} onchange={toggleincludedirs} />
+                        <input class="checkbox-input" type="checkbox" checked={(&*options).filter.dir} onchange={toggleincludedirs} />
                     </label>
                 </div>
                 <div class="form-item">
                     <label>
                         {"Symlinks"}
-                        <input class="checkbox-input" type="checkbox" checked={(&*options).include_links} onchange={toggleincludelinks} />
+                        <input class="checkbox-input" type="checkbox" checked={(&*options).filter.link} onchange={toggleincludelinks} />
                     </label>
                 </div>
                 <button class="submit-button card" type="submit" style = {submit_button_style}>{"Search"}</button>

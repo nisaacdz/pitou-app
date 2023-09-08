@@ -1,9 +1,9 @@
+use crate::app::ApplicationContext;
+use backend::File;
+use std::{path::PathBuf, rc::Rc};
 use wasm_bindgen_futures::spawn_local;
 use web_sys::{HtmlInputElement, HtmlSelectElement};
 use yew::prelude::*;
-use crate::app::ApplicationContext;
-use std::{rc::Rc, path::PathBuf};
-use backend::File;
 
 #[derive(PartialEq, Properties)]
 pub struct FolderDir {
@@ -77,8 +77,7 @@ pub fn AncestorsTabs(prop: &MainAncestorTabsProps) -> Html {
         if *isinput {
             html! { <EnterPath folder = {path.clone()} {finished}/> }
         } else {
-            let key = crate::app::data::unique();
-            html! { <Ancestors folder = {path.clone()} updatedirectory = {prop.updatedirectory.clone()} {key}/> }
+            html! { <Ancestors folder = {path.clone()} updatedirectory = {prop.updatedirectory.clone()}/> }
         }
     } else {
         html! {}
@@ -99,15 +98,14 @@ pub struct AncestorsProps {
     updatedirectory: Callback<PathBuf>,
 }
 
-
 #[function_component]
 pub fn Ancestors(prop: &AncestorsProps) -> Html {
-    prop.folder.ancestors()
-        .map(|path| (PathBuf::from(path), prop.updatedirectory.clone()))
-        .map(|(folder, updatedirectory)| html! { <Ancestor {folder} {updatedirectory}/> })
+    prop.folder
+        .ancestors()
+        .map(|path| (Rc::new(PathBuf::from(path)), prop.updatedirectory.clone()))
+        .map(|(folder, updatedirectory)| html! { <Ancestor {folder} {updatedirectory} /> })
         .collect::<Html>()
 }
-
 
 #[derive(PartialEq, Properties)]
 struct EnterPathProps {
@@ -126,8 +124,19 @@ fn EnterPath(prop: &EnterPathProps) -> Html {
     let onclick = move |e: MouseEvent| e.stop_propagation();
 
     let style = format! {"
-    width: 80%;
-    height: 80%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    width: 100%;
+    height: 80%
+    box-sizing: border-box;
+    "};
+
+    let inner_style = format! {"
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
     "};
 
     let onsubmit = {
@@ -145,14 +154,14 @@ fn EnterPath(prop: &EnterPathProps) -> Html {
 
     html! {
         <form {style} {onsubmit}>
-            <input type = "text" ref = {input_ref} {value} {onclick} width = "100%"/>
+            <input type = "text" ref = {input_ref} {value} {onclick} style = {inner_style}/>
         </form>
     }
 }
 
 #[derive(PartialEq, Properties)]
 struct AncestorProps {
-    folder: PathBuf,
+    folder: Rc<PathBuf>,
     updatedirectory: Callback<PathBuf>,
 }
 
@@ -184,7 +193,7 @@ fn Ancestor(prop: &AncestorProps) -> Html {
     html! {
         <div {style} {onclick}>
             <TabName folder = { prop.folder.clone() } updatedirectory = { prop.updatedirectory.clone() } />
-            <ChooseDir folder = {prop.folder.clone()} updatedirectory = { prop.updatedirectory.clone()}/>
+            <ChooseDir folder = {prop.folder.clone()} updatedirectory = { prop.updatedirectory.clone() } />
         </div>
     }
 }
@@ -194,7 +203,7 @@ fn ChooseDir(prop: &AncestorProps) -> Html {
     let ApplicationContext {
         theme: _,
         sizes,
-        settings: _,
+        settings,
     } = use_context().unwrap();
     let children = use_state(|| None);
 
@@ -202,13 +211,14 @@ fn ChooseDir(prop: &AncestorProps) -> Html {
         let children = children.clone();
         let folder = prop.folder.clone();
         use_effect_with_deps(
-            move |_| {
+            move |folder| {
+                let folder = folder.clone();
                 spawn_local(async move {
-                    let res = crate::app::tasks::children_dirs(&folder).await;
+                    let res = crate::app::tasks::children_dirs(&folder, settings.filter).await;
                     children.set(Some(res));
                 });
             },
-            (),
+            folder,
         );
     }
 
@@ -284,7 +294,7 @@ fn TabName(prop: &AncestorProps) -> Html {
     height: 100%;
     padding-left: 4px;
     padding-right: 4px;
-    min-width: 25px;
+    min-width: 15px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -294,10 +304,10 @@ fn TabName(prop: &AncestorProps) -> Html {
         let folder = prop.folder.clone();
         let updatedirectory = prop.updatedirectory.clone();
 
-        move |_| updatedirectory.emit(folder.clone())
+        move |_| updatedirectory.emit((&*folder).clone())
     };
 
-    let name = PathBuf::from(prop.folder.file_name().unwrap_or_default()).display().to_string();
+    let name = File::name_of(&prop.folder).to_owned();
 
     html! {
         <div {style} onclick = { updatedirectory }>

@@ -21,3 +21,7 @@ Tasks
 - onclick on single item, there should be a task to add to favorites and lock
 - onclick on multiple items, there should be a task to add all to favorites and lock all
 
+Immediate fix
+- Make EnterPath in AncestorsTabs wider than that tiny thing that already exists
+- Implement the refresh rate
+- Click on RowDescriptor of MainPane should toggle the selection (currently doesn't seem to work)

@@ -1,4 +1,5 @@
 use backend::Filter;
+use std::time::Duration;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Theme {
@@ -379,14 +380,20 @@ impl Default for Settings {
 impl Settings {
     pub const DEFAULT: Settings = Settings {
         view: AppView::Explorer,
-        refresh_rate: 250,
+        refresh_rate: 120,
         filter: Filter::DEFAULT,
     };
+
+    pub fn refresh_wait(self) -> Duration {
+        assert_ne!(self.refresh_rate, 0);
+        Duration::from_millis(60_000u64 / self.refresh_rate as u64)
+    }
 
     pub fn settings_or_default() -> Self {
         Self::DEFAULT
     }
-    pub fn view(&self) -> AppView {
+    
+    pub fn view(self) -> AppView {
         self.view
     }
 }

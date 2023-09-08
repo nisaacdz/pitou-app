@@ -2,7 +2,7 @@ use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
 use crate::app::ApplicationContext;
-use std::{rc::Rc, path::PathBuf};
+use std::{path::PathBuf, rc::Rc};
 
 #[derive(PartialEq, Properties)]
 pub struct NewDirPopUpProps {
@@ -28,7 +28,11 @@ pub fn NewDirPopUp(prop: &NewDirPopUpProps) -> Html {
     border: 2px solid {border_color};
     "};
 
-    let folder_name = prop.directory.file_name().map(|v| v.to_str().unwrap_or_default()).unwrap_or_default();
+    let folder_name = prop
+        .directory
+        .file_name()
+        .map(|v| v.to_str().unwrap_or_default())
+        .unwrap_or_default();
     let oldname = format! {"Create new folder in: {folder_name}"};
     let onclick = |e: MouseEvent| e.stop_propagation();
 

@@ -1,4 +1,6 @@
-use crate::app::{new_dir::NewDirPopUp, new_file::NewFilePopUp, rename::RenamePopUp, ApplicationContext};
+use crate::app::{
+    new_dir::NewDirPopUp, new_file::NewFilePopUp, rename::RenamePopUp, ApplicationContext,
+};
 use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
 

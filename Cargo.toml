@@ -15,6 +15,7 @@ wasm-bindgen = { version = "0.2.87", features = ["serde-serialize"] }
 web-sys = { version = "0.3.64", features = ["Screen", "HtmlSelectElement"] }
 js-sys = "0.3.64"
 async-std = "1.12.0"
+web-time = "0.2.0"
 
 [workspace]
 members = ["src-tauri", "backend"]

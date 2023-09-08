@@ -41,8 +41,10 @@ pub fn DeleteButton(prop: &TopButtonProps) -> Html {
                     };
                     let res = crate::app::tasks::to_js_items(items.iter());
 
-                    deletedata.set(RefCell::new(Some(StateData { deletedata: res, prompt })));
-                    
+                    deletedata.set(RefCell::new(Some(StateData {
+                        deletedata: res,
+                        prompt,
+                    })));
                 }
             }
         }
@@ -53,14 +55,15 @@ pub fn DeleteButton(prop: &TopButtonProps) -> Html {
         move |_| deletedata.set(RefCell::new(None))
     };
 
-    let prompt_or_not = if let Some(StateData { deletedata, prompt }) = deletedata.borrow_mut().take() {
-        let deletedata = Rc::new(RefCell::new(Some(deletedata)));
-        html! {
-            <ConfirmDelete {deletedata}  {prompt} {cancel} updateui = {prop.updateui.clone()}/>
-        }
-    } else {
-        html! {}
-    };
+    let prompt_or_not =
+        if let Some(StateData { deletedata, prompt }) = deletedata.borrow_mut().take() {
+            let deletedata = Rc::new(RefCell::new(Some(deletedata)));
+            html! {
+                <ConfirmDelete {deletedata}  {prompt} {cancel} updateui = {prop.updateui.clone()}/>
+            }
+        } else {
+            html! {}
+        };
 
     let tool_size = sizes.toolbar_item();
     let icon_size = sizes.toolbar_icon();

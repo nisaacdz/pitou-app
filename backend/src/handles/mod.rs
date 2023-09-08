@@ -1,6 +1,4 @@
-mod options;
 use crate::File;
-pub use options::*;
 use serde::{Deserialize, Serialize};
 use std::collections::LinkedList;
 

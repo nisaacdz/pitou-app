@@ -1,9 +1,9 @@
-use std::{path::PathBuf, cell::RefCell, collections::LinkedList};
+use std::{cell::RefCell, collections::LinkedList, path::PathBuf};
 
-use backend::{File, SearchMsg, Path, SearchOptions, Locals, Drive};
+use super::invoke;
+use backend::{Drive, File, Filter, Locals, Path, SearchMsg, SearchOptions};
 use serde_wasm_bindgen::{from_value, to_value};
 use wasm_bindgen::JsValue;
-use super::invoke;
 
 use serde::Serialize;
 
@@ -14,6 +14,11 @@ struct SearchArgs<'a> {
     options: SearchOptions,
 }
 
+#[derive(Serialize)]
+struct RetrieveArgs<'a> {
+    path: &'a Path,
+    filter: Filter,
+}
 
 #[derive(Serialize)]
 struct PathArg<'a> {
@@ -22,14 +27,6 @@ struct PathArg<'a> {
 
 #[derive(Serialize)]
 struct NoArg;
-
-
-#[derive(Serialize)]
-struct PitouSearchArgs<'a> {
-    key: &'a String,
-    path: &'a Path,
-    options: SearchOptions,
-}
 
 #[derive(Serialize)]
 struct PathNameArgs<'a> {
@@ -40,13 +37,14 @@ struct PathNameArgs<'a> {
 #[derive(Serialize)]
 struct ItemsArg<'a, I: Iterator<Item = &'a Path>> {
     #[serde(with = "items_serde")]
-    pub items: RefCell<Option<I>>
+    pub items: RefCell<Option<I>>,
 }
-
 
 impl<'a, I: Iterator<Item = &'a Path>> ItemsArg<'a, I> {
     fn new(items: I) -> Self {
-        Self { items: RefCell::new(Some(items)) }
+        Self {
+            items: RefCell::new(Some(items)),
+        }
     }
 }
 
@@ -55,11 +53,14 @@ pub fn to_js_items<'a, I: Iterator<Item = &'a File>>(iter: I) -> JsValue {
 }
 
 mod items_serde {
-    use serde::Serializer;
     use backend::Path;
+    use serde::Serializer;
     use std::cell::RefCell;
 
-    pub fn serialize<'a, S: Serializer, I: Iterator<Item = &'a Path>>(items: &RefCell<Option<I>>, sz: S) -> Result<S::Ok, S::Error> {
+    pub fn serialize<'a, S: Serializer, I: Iterator<Item = &'a Path>>(
+        items: &RefCell<Option<I>>,
+        sz: S,
+    ) -> Result<S::Ok, S::Error> {
         sz.collect_seq(items.borrow_mut().take().unwrap())
     }
 }
@@ -77,22 +78,35 @@ pub async fn delete(arg: JsValue) {
 }
 
 pub async fn paste(directory: &PathBuf) {
-    let arg = to_value(&PathArg { path: directory.as_ref() }).unwrap();
+    let arg = to_value(&PathArg {
+        path: directory.as_ref(),
+    })
+    .unwrap();
     invoke("paste", arg).await;
 }
 
 pub async fn rename(path: &PathBuf, name: &str) {
-    let arg = to_value(&PathNameArgs { path: path.as_ref(), name }).unwrap();
+    let arg = to_value(&PathNameArgs {
+        path: path.as_ref(),
+        name,
+    })
+    .unwrap();
     invoke("rename", arg).await;
 }
 
 pub async fn createfile(path: &PathBuf) {
-    let arg = to_value(&PathArg { path: path.as_ref() }).unwrap();
+    let arg = to_value(&PathArg {
+        path: path.as_ref(),
+    })
+    .unwrap();
     invoke("createfile", arg).await;
 }
 
 pub async fn createdir(path: &PathBuf) {
-    let arg = to_value(&PathArg { path: path.as_ref() }).unwrap();
+    let arg = to_value(&PathArg {
+        path: path.as_ref(),
+    })
+    .unwrap();
     invoke("createdir", arg).await;
 }
 
@@ -108,23 +122,38 @@ pub async fn clipboard() -> LinkedList<Path> {
     from_value(res).unwrap()
 }
 
-pub async fn children(dir: &PathBuf) -> Vec<File> {
-    let arg = to_value(&PathArg { path: dir.as_ref() }).unwrap();
+pub async fn children(path: &PathBuf, filter: Filter) -> Vec<File> {
+    let arg = to_value(&RetrieveArgs {
+        path: path.as_ref(),
+        filter,
+    })
+    .unwrap();
     from_value(invoke("children", arg).await).unwrap()
 }
 
-pub async fn siblings(path: &PathBuf) -> Vec<File> {
-    let arg = to_value(&PathArg { path: path.as_ref() }).unwrap();
+pub async fn siblings(path: &PathBuf, filter: Filter) -> Vec<File> {
+    let arg = to_value(&RetrieveArgs {
+        path: path.as_ref(),
+        filter,
+    })
+    .unwrap();
     from_value(invoke("siblings", arg).await).unwrap()
 }
 
-pub async fn children_dirs(dir: &PathBuf) -> Vec<File> {
-    let arg = to_value(&PathArg { path: dir.as_ref() }).unwrap();
+pub async fn children_dirs(path: &PathBuf, filter: Filter) -> Vec<File> {
+    let arg = to_value(&RetrieveArgs {
+        path: path.as_ref(),
+        filter,
+    })
+    .unwrap();
     from_value(invoke("children_dirs", arg).await).unwrap()
 }
 
 pub async fn open(path: &PathBuf) {
-    let arg = to_value(&PathArg { path: path.as_ref() }).unwrap();
+    let arg = to_value(&PathArg {
+        path: path.as_ref(),
+    })
+    .unwrap();
     invoke("open", arg).await;
 }
 
@@ -142,13 +171,19 @@ pub async fn drives() -> Vec<Drive> {
 
 /// returns the file that this sumbolic link points to along with the directory and also return
 pub async fn read_link(path: &PathBuf) -> Option<File> {
-    let arg = to_value(&PathArg { path: path.as_ref() }).unwrap();
+    let arg = to_value(&PathArg {
+        path: path.as_ref(),
+    })
+    .unwrap();
     let js_res = invoke("read_link", arg).await;
     from_value(js_res).unwrap()
 }
 
 pub async fn retrieve(path: &PathBuf) -> Option<File> {
-    let arg = to_value(&PathArg { path: path.as_ref() }).unwrap();
+    let arg = to_value(&PathArg {
+        path: path.as_ref(),
+    })
+    .unwrap();
     let js_res = invoke("retrieve", arg).await;
     from_value(js_res).unwrap()
 }
@@ -159,7 +194,7 @@ pub async fn terminate_search_stream() {
 }
 
 pub async fn restart_stream_search(key: &String, path: &Path, options: SearchOptions) {
-    let arg = to_value(&SearchArgs {key, path, options}).unwrap();
+    let arg = to_value(&SearchArgs { key, path, options }).unwrap();
     invoke("restart_stream_search", arg).await;
 }
 

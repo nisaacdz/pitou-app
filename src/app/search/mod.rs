@@ -1,6 +1,6 @@
-use std::{time::Duration, rc::Rc, path::PathBuf};
+use std::{path::PathBuf, rc::Rc, time::Duration};
 
-use backend::{SearchMsg, File};
+use backend::{File, SearchMsg};
 use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
 
@@ -67,7 +67,7 @@ pub fn SearchPage() -> Html {
 
     html! {
         <div style = {outer_style}>
-            <AncestorsTabs folder = {(&*dir).clone()} updatedirectory = {updatedirectory2} />
+            <AncestorsTabs folder = {(&*dir).clone()} updatedirectory = {updatedirectory2}/>
             <SearchView dir = {(&*dir).clone()} {updatedirectory}/>
         </div>
     }
@@ -145,7 +145,6 @@ pub fn SearchView(prop: &SearchViewProps) -> Html {
                             match crate::app::tasks::read_search_stream().await {
                                 Some(msg) => match msg {
                                     SearchMsg::Terminated(items) => {
-                                        println!("search stream terminated!");
                                         let results = if items.len() > 0 {
                                             let mut results = (&*search_state.results()).clone();
                                             results.extend(items);
@@ -209,7 +208,8 @@ pub fn SearchView(prop: &SearchViewProps) -> Html {
 
             spawn_local(async move {
                 if let Some(dir) = dir.as_ref() {
-                    crate::app::tasks::restart_stream_search(&input, (&**dir).as_ref(), options).await;
+                    crate::app::tasks::restart_stream_search(&input, (&**dir).as_ref(), options)
+                        .await;
                     let results = std::rc::Rc::new(Vec::new());
                     let state = SearchState::Searching;
                     search_state.set(SearchResultState { results, state })

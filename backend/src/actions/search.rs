@@ -4,33 +4,30 @@ use tokio::{fs, task::JoinHandle};
 use crate::{Get, KeyType, SearchArea, SearchMsg, SearchOptions, SearchStream, StrOps};
 
 macro_rules! should_include {
-    ($filetype:expr, $options:expr, $file_name:expr, $key:expr) => {
-        if ($filetype.is_dir() && $options.include_dirs)
-            || ($filetype.is_file() && $options.include_files)
-            || ($filetype.is_symlink() && $options.include_links)
-        {
+    ($file:expr, $options:expr, $key:expr) => {
+        if $options.filter.include(&$file) {
             match $options.keytype {
-                KeyType::Regex => $file_name.matches(&*$key).next().is_some(),
+                KeyType::Regex => $file.name().matches(&*$key).next().is_some(),
                 KeyType::RawSearch(area) => match area {
                     SearchArea::StartsWith => {
                         if $options.case_sensitive {
-                            $file_name.starts_with(&*$key)
+                            $file.name().starts_with(&*$key)
                         } else {
-                            $file_name.starts_with_ignore_case(&*$key)
+                            $file.name().starts_with_ignore_case(&*$key)
                         }
                     }
                     SearchArea::EndsWith => {
                         if $options.case_sensitive {
-                            $file_name.ends_with(&*$key)
+                            $file.name().ends_with(&*$key)
                         } else {
-                            $file_name.ends_with_ignore_case(&*$key)
+                            $file.name().ends_with_ignore_case(&*$key)
                         }
                     }
                     SearchArea::Contains => {
                         if $options.case_sensitive {
-                            $file_name.contains(&*$key)
+                            $file.name().contains(&*$key)
                         } else {
-                            $file_name.contains_ignore_case(&*$key)
+                            $file.name().contains_ignore_case(&*$key)
                         }
                     }
                 },
@@ -109,10 +106,8 @@ async fn recursive_search(
 
     if let Ok(mut rd) = fs::read_dir(search_in).await {
         while let Ok(Some(de)) = rd.next_entry().await {
-            let name = de.file_name();
-
-            let file_name = if let Some(name) = name.to_str() {
-                name
+            let file = if let Ok(file) = de.path().get() {
+                file
             } else if options.skip_errors {
                 continue;
             } else {
@@ -120,22 +115,15 @@ async fn recursive_search(
                 continue;
             };
 
-            let filetype = if let Ok(filetype) = de.file_type().await {
-                filetype
-            } else if options.skip_errors {
-                continue;
-            } else {
-                //TODO
-                continue;
-            };
+            let is_dir = file.metadata().is_dir();
 
-            if should_include!(filetype, options, file_name, key) {
-                if !stream.push(de.path().get().expect("couldn't parse path")) {
+            if should_include!(file, options, key) {
+                if !stream.push(file) {
                     return;
                 }
             }
 
-            if filetype.is_dir() && options.depth > 0 {
+            if is_dir && options.depth > 0 {
                 let stream = stream.clone();
                 let key = key.clone();
                 let path = de.path();

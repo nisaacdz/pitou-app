@@ -17,7 +17,7 @@ pub fn Pane() -> Html {
     let ApplicationContext {
         theme,
         sizes,
-        settings: _,
+        settings,
     } = use_context().unwrap();
 
     let state = use_state(|| Contents::default());
@@ -27,7 +27,7 @@ pub fn Pane() -> Html {
         use_effect_with_deps(
             move |state| {
                 let state = state.clone();
-
+                
                 match &*state {
                     Contents {
                         directory: None,
@@ -43,7 +43,9 @@ pub fn Pane() -> Html {
                         } else {
                             let state = state.clone();
                             spawn_local(async move {
-                                let directory = Rc::new(crate::app::tasks::default_directory().await);
+                                let directory =
+                                    Rc::new(crate::app::tasks::default_directory().await);
+                                crate::app::data::update_directory(Some(directory.clone()));
                                 state.set(Contents {
                                     directory: Some(directory),
                                     children: None,
@@ -52,17 +54,54 @@ pub fn Pane() -> Html {
                             })
                         }
                     }
+
                     Contents {
                         directory: Some(directory),
-                        children: None,
-                        siblings: None,
+                        children: Some(_),
+                        siblings: Some(_),
                     } => {
                         let state = state.clone();
                         let directory = directory.clone();
 
                         spawn_local(async move {
-                            let children = crate::app::tasks::children(&*directory).await;
-                            let siblings = crate::app::tasks::siblings(&*directory).await;
+                            async_std::task::sleep(settings.refresh_wait()).await;
+                            // check to see if the state was not changed during sleep
+                            if matches!(crate::app::data::directory(), Some(sd) if sd == directory) {
+                                let children =
+                                    crate::app::tasks::children(&*directory, settings.filter).await;
+                                let siblings =
+                                    crate::app::tasks::siblings(&*directory, settings.filter).await;
+                                let children = Rc::new(children);
+                                let siblings = Rc::new(siblings);
+                                state.set(Contents {
+                                    directory: Some(directory.clone()),
+                                    children: Some(children),
+                                    siblings: Some(siblings),
+                                });
+                            } else {
+                                let new_state = Contents {
+                                    directory: None,
+                                    children: None,
+                                    siblings: None,
+                                };
+                                state.set(new_state);
+                            }
+                        });
+                    }
+
+                    Contents {
+                        directory: Some(directory),
+                        children: _,
+                        siblings: _,
+                    } => {
+                        let state = state.clone();
+                        let directory = directory.clone();
+
+                        spawn_local(async move {
+                            let children =
+                                crate::app::tasks::children(&*directory, settings.filter).await;
+                            let siblings =
+                                crate::app::tasks::siblings(&*directory, settings.filter).await;
                             let children = Rc::new(children);
                             let siblings = Rc::new(siblings);
                             state.set(Contents {
@@ -72,14 +111,6 @@ pub fn Pane() -> Html {
                             });
                         });
                     }
-
-                    Contents {
-                        directory: Some(_),
-                        children: Some(_),
-                        siblings: _,
-                    } => (),
-
-                    _ => (),
                 }
             },
             state.clone(),
@@ -101,17 +132,9 @@ pub fn Pane() -> Html {
     };
 
     let updatedirectory = Callback::from({
-        let state = state.clone();
-
         move |dir: File| {
             let directory = Rc::new(dir.path().clone());
             crate::app::data::update_directory(Some(directory.clone()));
-            let new_state = Contents {
-                directory: Some(directory),
-                children: None,
-                siblings: None,
-            };
-            state.set(new_state);
         }
     });
 
@@ -137,7 +160,7 @@ pub fn Pane() -> Html {
 
     html! {
         <div {style}>
-            <AncestorsTabs updatedirectory = {updatedirectory_with_path.clone()} folder = {state.directory()} />
+            <AncestorsTabs updatedirectory = {updatedirectory_with_path.clone()} folder = {state.directory()}/>
             <div style = {split_pane_style}>
                 <SidePane siblings = { state.siblings() } directory = { state.directory() } updatedirectory = { updatedirectory_with_path } />
                 <MainPane {updatedirectory} children = { state.children() }/>
@@ -146,11 +169,16 @@ pub fn Pane() -> Html {
     }
 }
 
-#[derive(PartialEq)]
 struct Contents {
     directory: Option<Rc<PathBuf>>,
     children: Option<Rc<Vec<File>>>,
     siblings: Option<Rc<Vec<File>>>,
+}
+
+impl PartialEq for Contents {
+    fn eq(&self, _: &Self) -> bool {
+        false
+    }
 }
 
 impl Contents {
@@ -174,3 +202,23 @@ impl Contents {
         self.directory.clone()
     }
 }
+// use web_time::{Duration, Instant};
+// use std::{future::Future, task::{Poll, Context}};
+
+// pub async fn sleep(directory: Rc<PathBuf> , duration: Duration) -> Option<Rc<PathBuf>> {
+//     struct SleepHandle {
+//         directory: Rc<PathBuf>,
+//         timeout: Instant,
+//     }
+
+//     impl Future for SleepHandle {
+//         type Output = Option<Rc<PathBuf>>;
+//         fn poll(self: std::pin::Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+
+//         }
+//     }
+
+//     let timeout = Instant::now().checked_add(duration).unwrap();
+
+//     SleepHandle { directory, timeout }.await
+// }

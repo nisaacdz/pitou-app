@@ -1,6 +1,6 @@
 use backend::{File, PitouType};
-use wasm_bindgen_futures::spawn_local;
 use std::path::PathBuf;
+use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
 
 use crate::app::{ApplicationContext, LoadingDisplay};
@@ -69,7 +69,8 @@ pub fn SidePane(prop: &SidePaneProps) -> Html {
             use std::path::PathBuf;
 
             if let Some(val) = &selected {
-                let pitou = val.parent()
+                let pitou = val
+                    .parent()
                     .map(|path| PathBuf::from(path))
                     .unwrap_or_default()
                     .join(newstr);
@@ -81,28 +82,27 @@ pub fn SidePane(prop: &SidePaneProps) -> Html {
     let onclick = Callback::from({
         let updatedirectory = prop.updatedirectory.clone();
 
-        move |file: File|  match file.metadata().file_type() {
-                PitouType::Directory => {
-                    updatedirectory.emit(file.path().clone());
-                }
-                PitouType::File => {
-                    let file = file.clone();
-                    spawn_local(async move {
-                        crate::app::tasks::open(file.path()).await
-                    })
-                },
-                PitouType::Link => {
-                    let symlink = file.clone();
-                    let updatedirectory = updatedirectory.clone();
-                    spawn_local(async move {
-                        if let Some(file) = crate::app::tasks::read_link(symlink.path()).await {
-                            let parent_dir = PathBuf::from(file.path().parent().unwrap_or(std::path::Path::new("")));
-                            crate::app::data::persist(file.clone());
-                            updatedirectory.emit(parent_dir);
-                        }
-                    })
-                },
+        move |file: File| match file.metadata().file_type() {
+            PitouType::Directory => {
+                updatedirectory.emit(file.path().clone());
             }
+            PitouType::File => {
+                let file = file.clone();
+                spawn_local(async move { crate::app::tasks::open(file.path()).await })
+            }
+            PitouType::Link => {
+                let symlink = file.clone();
+                let updatedirectory = updatedirectory.clone();
+                spawn_local(async move {
+                    if let Some(file) = crate::app::tasks::read_link(symlink.path()).await {
+                        let parent_dir =
+                            PathBuf::from(file.path().parent().unwrap_or(std::path::Path::new("")));
+                        crate::app::data::persist(file.clone());
+                        updatedirectory.emit(parent_dir);
+                    }
+                })
+            }
+        }
     });
 
     let is_selected = {

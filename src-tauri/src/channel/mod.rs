@@ -1,4 +1,4 @@
-use backend::{File, Properties, SearchMsg, SearchOptions, Path};
+use backend::{File, Filter, Path, Properties, SearchMsg, SearchOptions};
 
 #[tauri::command]
 pub async fn properties(path: Path) -> Properties {
@@ -48,22 +48,24 @@ pub fn retrieve(path: Path) -> Option<File> {
 }
 
 #[tauri::command]
-pub async fn children(path: Path) -> Vec<File> {
-    backend::File::children(&path.into_inner())
+pub async fn children(path: Path, filter: Filter) -> Vec<File> {
+    backend::File::children(&path.into_inner(), filter)
         .await
         .expect("cannot retrieve children of selected file")
 }
 
 #[tauri::command]
-pub async fn children_dirs(path: Path) -> Vec<File> {
-    backend::File::children_dirs(&path.into_inner())
+pub async fn children_dirs(path: Path, filter: Filter) -> Vec<File> {
+    backend::File::children_dirs(&path.into_inner(), filter)
         .await
         .expect("failed searching for children directories")
 }
 
 #[tauri::command]
-pub async fn siblings(path: Path) -> Vec<File> {
-    backend::File::siblings(&path.into_inner()).await.expect("couldn't get siblings of selected file")
+pub async fn siblings(path: Path, filter: Filter) -> Vec<File> {
+    backend::File::siblings(&path.into_inner(), filter)
+        .await
+        .expect("couldn't get siblings of selected file")
 }
 
 #[tauri::command]

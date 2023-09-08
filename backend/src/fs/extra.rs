@@ -1,5 +1,5 @@
 use super::Drive;
-use crate::{DateTime, DriveKind, File, Inner, Locals, Metadata, Properties};
+use crate::{DateTime, DriveKind, File, Filter, Inner, Locals, Metadata, Properties};
 use std::{
     io,
     path::{Path, PathBuf},
@@ -121,7 +121,7 @@ impl File {
         fs::try_exists(self.path()).await
     }
 
-    pub async fn children_dirs(dir: &PathBuf) -> io::Result<Vec<Self>> {
+    pub async fn children_dirs(dir: &PathBuf, filter: Filter) -> io::Result<Vec<Self>> {
         if dir.as_os_str().len() == 0 {
             return Ok(drives()
                 .into_iter()
@@ -139,15 +139,18 @@ impl File {
                 .expect("couldn't get metadata")
                 .into();
 
-            if metadata.is_dir() {
-                let inner = Arc::new(Inner { path, metadata });
-                res.push(File { inner });
+            let file = File {
+                inner: Arc::new(Inner { path, metadata }),
+            };
+
+            if file.metadata().is_dir() && filter.include(&file) {
+                res.push(file);
             }
         }
         Ok(res)
     }
 
-    pub async fn children(dir: &Path) -> io::Result<Vec<Self>> {
+    pub async fn children(dir: &Path, filter: Filter) -> io::Result<Vec<Self>> {
         if dir.as_os_str().len() == 0 {
             return Ok(drives()
                 .into_iter()
@@ -164,17 +167,24 @@ impl File {
                 .await
                 .expect("couldn't get metadata")
                 .into();
-            let inner = Arc::new(Inner { path, metadata });
-            res.push(File { inner })
+            let file = File {
+                inner: Arc::new(Inner { path, metadata }),
+            };
+            if filter.include(&file) {
+                res.push(file);
+            }
         }
         Ok(res)
     }
 
-    pub async fn siblings(dir: &PathBuf) -> io::Result<Vec<Self>> {
+    pub async fn siblings(dir: &PathBuf, filter: Filter) -> io::Result<Vec<Self>> {
         if let Some(v) = dir.parent() {
-            Self::children(v).await
+            Self::children(v, filter).await
         } else {
-            Ok(Vec::new())
+            Ok(drives()
+                .into_iter()
+                .map(|drive| drive.get().expect("drive failed parse"))
+                .collect())
         }
     }
 

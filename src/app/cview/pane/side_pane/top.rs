@@ -1,4 +1,4 @@
-use std::{rc::Rc, path::PathBuf};
+use std::{path::PathBuf, rc::Rc};
 
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
@@ -44,7 +44,11 @@ pub fn TopOfParentDir(prop: &TopOfParentDirProps) -> Html {
     let placeholder = prop
         .selected
         .as_ref()
-        .map(|item| PathBuf::from(item.file_name().unwrap_or_default()).display().to_string())
+        .map(|item| {
+            PathBuf::from(item.file_name().unwrap_or_default())
+                .display()
+                .to_string()
+        })
         .unwrap_or_default();
 
     let onsubmit = {

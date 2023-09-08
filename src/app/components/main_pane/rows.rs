@@ -1,4 +1,7 @@
-use crate::app::{AppView, ApplicationContext, DirIcon, FileIcon, SymLinkIcon};
+use crate::{
+    app::{AppView, ApplicationContext, DirIcon, FileIcon, SymLinkIcon},
+    background_color,
+};
 
 use backend::{DateTime, File, PitouType};
 use yew::prelude::*;
@@ -15,7 +18,7 @@ pub struct RowProps {
 #[function_component]
 pub fn Row(prop: &RowProps) -> Html {
     let ApplicationContext {
-        theme: _,
+        theme,
         sizes,
         settings: _,
     } = use_context().unwrap();
@@ -38,13 +41,15 @@ pub fn Row(prop: &RowProps) -> Html {
         }
     };
     let height = sizes.row();
+    let background = theme.background1();
 
     let style = format! {"
     display: flex;
     gap: 0;
     font-size: 90%;
     {height}
-    width: auto;"};
+    width: auto;
+    {}", background_color!(prop.selected, background)};
 
     let onclick = {
         let toggleselect = toggleselect.clone();

@@ -28,7 +28,11 @@ pub fn NewFilePopUp(prop: &NewFilePopUpProps) -> Html {
     border: 2px solid {border_color};
     "};
 
-    let folder_name = prop.directory.file_name().map(|v| v.to_str().unwrap_or_default()).unwrap_or_default();
+    let folder_name = prop
+        .directory
+        .file_name()
+        .map(|v| v.to_str().unwrap_or_default())
+        .unwrap_or_default();
     let oldname = format! {"Create new file in: {folder_name}"};
 
     let onclick = |e: MouseEvent| e.stop_propagation();

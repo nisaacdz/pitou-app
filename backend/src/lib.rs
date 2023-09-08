@@ -9,6 +9,7 @@ pub use handles::*;
 
 mod json;
 pub use json::*;
+use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "tauri")]
 pub mod actions;
@@ -71,13 +72,13 @@ where
 }
 
 /// Represents specific patterns to exclude from a list of files
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct Filter {
-    dot_hidden: bool,
-    sys_hidden: bool,
-    dir: bool,
-    link: bool,
-    file: bool,
+    pub dot_hidden: bool,
+    pub sys_hidden: bool,
+    pub dir: bool,
+    pub link: bool,
+    pub file: bool,
 }
 
 impl Filter {

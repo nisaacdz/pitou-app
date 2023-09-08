@@ -1,5 +1,5 @@
 mod selections;
-use std::{rc::Rc, path::PathBuf};
+use std::{path::PathBuf, rc::Rc};
 
 pub use selections::*;
 

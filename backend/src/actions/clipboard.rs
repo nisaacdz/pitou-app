@@ -1,5 +1,5 @@
-use std::collections::LinkedList;
 use crate::Path;
+use std::collections::LinkedList;
 
 static mut CLIPBOARD: LinkedList<Vec<Path>> = LinkedList::new();
 static mut SHOULD_CUT: bool = false;

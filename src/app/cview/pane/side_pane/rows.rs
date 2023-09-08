@@ -1,7 +1,10 @@
 use backend::File;
 use yew::prelude::*;
 
-use crate::app::{ApplicationContext, DirIcon, FileIcon, SymLinkIcon};
+use crate::{
+    app::{ApplicationContext, DirIcon, FileIcon, SymLinkIcon},
+    background_color,
+};
 
 #[derive(PartialEq, Properties)]
 pub struct SidePaneRowProps {
@@ -28,6 +31,8 @@ pub fn SidePaneRow(prop: &SidePaneRowProps) -> Html {
 
     let height = sizes.row();
 
+    let background = theme.background1();
+
     let style = format! {"
     display: flex;
     flex-shrink: 0;
@@ -36,7 +41,8 @@ pub fn SidePaneRow(prop: &SidePaneRowProps) -> Html {
     font-size: 90%;
     color: {foreground_color};
     font-family: monospace;
-    width: 100%;"};
+    width: 100%;
+    {}", background_color!(prop.selected, background)};
 
     let filetype = prop.file.metadata().file_type();
 

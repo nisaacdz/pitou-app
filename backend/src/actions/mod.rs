@@ -66,5 +66,8 @@ pub async fn create_dir(dir: PathBuf) {
 }
 
 pub async fn read_link(link: PathBuf) -> Option<crate::File> {
-    fs::read_link(link).await.map(|v| v.get().ok()).unwrap_or(None)
+    fs::read_link(link)
+        .await
+        .map(|v| v.get().ok())
+        .unwrap_or(None)
 }

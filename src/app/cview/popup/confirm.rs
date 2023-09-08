@@ -1,7 +1,7 @@
+use std::{cell::RefCell, rc::Rc};
 use wasm_bindgen::JsValue;
 use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
-use std::{rc::Rc, cell::RefCell};
 
 use crate::app::ApplicationContext;
 
