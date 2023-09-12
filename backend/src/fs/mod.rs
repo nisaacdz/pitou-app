@@ -467,7 +467,7 @@ pub struct SearchOptions {
 
 impl SearchOptions {
     #[inline]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         SearchOptions {
             depth: 1,
             keytype: KeyType::RawSearch(SearchArea::StartsWith),

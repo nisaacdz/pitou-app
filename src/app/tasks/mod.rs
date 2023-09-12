@@ -193,8 +193,13 @@ pub async fn terminate_search_stream() {
     invoke("reset_search_stream", arg).await;
 }
 
-pub async fn restart_stream_search(key: &String, path: &Path, options: SearchOptions) {
-    let arg = to_value(&SearchArgs { key, path, options }).unwrap();
+pub async fn restart_stream_search(key: &String, path: &PathBuf, options: SearchOptions) {
+    let arg = to_value(&SearchArgs {
+        key,
+        path: path.as_ref(),
+        options,
+    })
+    .unwrap();
     invoke("restart_stream_search", arg).await;
 }
 

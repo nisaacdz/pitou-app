@@ -228,7 +228,18 @@ justify-content: space-evenly;
   background-color: var(--row-hover-color);
 }
 
+.local:hover {
+  background-color: var(--row-hover-color);
+}
 
-.test_me_rm {
-  justify-content: first baseline;
+.under-detail {
+  justify-content: space-between;
+}
+
+.row-checkbox {
+  visibility: hidden;
+}
+
+.checkbox-container:hover .row-checkbox {
+    visibility: visible;
 }

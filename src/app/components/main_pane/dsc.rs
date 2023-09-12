@@ -59,9 +59,8 @@ pub fn CheckBox(prop: &CheckBoxProps) -> Html {
         settings: _,
     } = use_context().unwrap();
 
-    let onchange = {
+    let onclick = {
         let ontoggle = prop.ontoggle.clone();
-
         move |_| {
             gloo::console::log!("checkbox clicked");
             ontoggle.emit(());
@@ -80,7 +79,7 @@ pub fn CheckBox(prop: &CheckBoxProps) -> Html {
 
     html! {
         <div {style}>
-            <input type = "checkbox" {onchange} checked = { prop.ischecked }/>
+            <input type = "checkbox" {onclick} checked = { prop.ischecked }/>
         </div>
     }
 }

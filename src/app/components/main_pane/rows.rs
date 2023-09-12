@@ -10,7 +10,7 @@ use yew::prelude::*;
 pub struct RowProps {
     pub(super) file: File,
     pub(super) idx: usize,
-    pub(super) toggleselect: Callback<usize>,
+    pub(super) onselect: Callback<(usize, bool)>,
     pub(super) ondbclick: Callback<usize>,
     pub(super) selected: bool,
 }
@@ -32,14 +32,14 @@ pub fn Row(prop: &RowProps) -> Html {
         }
     };
 
-    let toggleselect = {
-        let func = prop.toggleselect.clone();
+    let appendselect = {
+        let func = prop.onselect.clone();
         let idx = prop.idx;
-
         move |_| {
-            func.emit(idx);
+            func.emit((idx, true));
         }
     };
+
     let height = sizes.row();
     let background = theme.background1();
 
@@ -52,8 +52,9 @@ pub fn Row(prop: &RowProps) -> Html {
     {}", background_color!(prop.selected, background)};
 
     let onclick = {
-        let toggleselect = toggleselect.clone();
-        move |_| toggleselect(())
+        let onselect = prop.onselect.clone();
+        let idx = prop.idx;
+        move |_| onselect.emit((idx, false))
     };
 
     let lastmodified = prop.file.metadata().modified();
@@ -61,7 +62,7 @@ pub fn Row(prop: &RowProps) -> Html {
 
     html! {
         <div class = "row" {style} {onclick} {ondblclick}>
-            <CheckBox ontoggle = {toggleselect} ischecked = { prop.selected } />
+            <CheckBox {appendselect} ischecked = { prop.selected } />
             <FileIconCmp {filetype} />
             <FileName file = { prop.file.clone() }/>
             <FileTypeCmp {filetype} />
@@ -73,7 +74,7 @@ pub fn Row(prop: &RowProps) -> Html {
 #[derive(PartialEq, Properties)]
 pub struct CheckBoxProps {
     pub ischecked: bool,
-    pub ontoggle: Callback<()>,
+    pub appendselect: Callback<()>,
 }
 
 #[function_component]
@@ -85,21 +86,22 @@ pub fn CheckBox(prop: &CheckBoxProps) -> Html {
     } = use_context().unwrap();
 
     let onclick = {
-        let ontoggle = prop.ontoggle.clone();
-        move |_| {
+        let ontoggle = prop.appendselect.clone();
+        move |e: MouseEvent| {
+            e.stop_propagation();
             ontoggle.emit(());
         }
     };
 
-    let checked = prop.ischecked;
-
-    let checkbox_elem = if prop.ischecked {
-        html! { <input type = "checkbox" {onclick} {checked}/> }
-    } else {
-        html! {}
-    };
-
     let width = sizes.row_checkbox();
+
+    let show_on_checked = if prop.ischecked {
+        format! {"
+            visibility: visible;
+        "}
+    } else {
+        "".to_owned()
+    };
 
     let style = format! {"
     display: flex;
@@ -110,8 +112,8 @@ pub fn CheckBox(prop: &CheckBoxProps) -> Html {
     "};
 
     html! {
-        <div {style}>
-            { checkbox_elem }
+        <div {style} class = "checkbox-container" {onclick}>
+            <input type = "checkbox" class = "row-checkbox" checked = {prop.ischecked} style = {show_on_checked}/>
         </div>
     }
 }

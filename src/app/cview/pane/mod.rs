@@ -15,7 +15,7 @@ use std::rc::Rc;
 #[function_component]
 pub fn Pane() -> Html {
     let ApplicationContext {
-        theme,
+        theme: _,
         sizes,
         settings,
     } = use_context().unwrap();
@@ -27,22 +27,21 @@ pub fn Pane() -> Html {
         use_effect_with_deps(
             move |state| {
                 let state = state.clone();
-                
-                match &*state {
-                    Contents {
-                        directory: None,
-                        children: _,
-                        siblings: _,
-                    } => {
-                        if let Some(directory) = crate::app::data::directory() {
-                            state.set(Contents {
-                                directory: Some(directory.clone()),
-                                children: None,
-                                siblings: None,
-                            })
-                        } else {
-                            let state = state.clone();
-                            spawn_local(async move {
+                spawn_local(async move {
+                    match &*state {
+                        Contents {
+                            directory: None,
+                            children: _,
+                            siblings: _,
+                        } => {
+                            if let Some(directory) = crate::app::data::directory() {
+                                state.set(Contents {
+                                    directory: Some(directory.clone()),
+                                    children: None,
+                                    siblings: None,
+                                })
+                            } else {
+                                let state = state.clone();
                                 let directory =
                                     Rc::new(crate::app::tasks::default_directory().await);
                                 crate::app::data::update_directory(Some(directory.clone()));
@@ -51,26 +50,24 @@ pub fn Pane() -> Html {
                                     children: None,
                                     siblings: None,
                                 })
-                            })
+                            }
                         }
-                    }
-
-                    Contents {
-                        directory: Some(directory),
-                        children: Some(_),
-                        siblings: Some(_),
-                    } => {
-                        let state = state.clone();
-                        let directory = directory.clone();
-
-                        spawn_local(async move {
+                        Contents {
+                            directory: Some(directory),
+                            children: Some(_),
+                            siblings: Some(_),
+                        } => {
+                            let state = state.clone();
                             async_std::task::sleep(settings.refresh_wait()).await;
                             // check to see if the state was not changed during sleep
-                            if matches!(crate::app::data::directory(), Some(sd) if sd == directory) {
+                            if matches!(crate::app::data::directory(), Some(sd) if &sd == directory)
+                            {
                                 let children =
-                                    crate::app::tasks::children(&*directory, settings.filter).await;
+                                    crate::app::tasks::children(&**directory, settings.filter)
+                                        .await;
                                 let siblings =
-                                    crate::app::tasks::siblings(&*directory, settings.filter).await;
+                                    crate::app::tasks::siblings(&**directory, settings.filter)
+                                        .await;
                                 let children = Rc::new(children);
                                 let siblings = Rc::new(siblings);
                                 state.set(Contents {
@@ -86,18 +83,14 @@ pub fn Pane() -> Html {
                                 };
                                 state.set(new_state);
                             }
-                        });
-                    }
-
-                    Contents {
-                        directory: Some(directory),
-                        children: _,
-                        siblings: _,
-                    } => {
-                        let state = state.clone();
-                        let directory = directory.clone();
-
-                        spawn_local(async move {
+                        }
+                        Contents {
+                            directory: Some(directory),
+                            children: _,
+                            siblings: _,
+                        } => {
+                            let state = state.clone();
+                            let directory = directory.clone();
                             let children =
                                 crate::app::tasks::children(&*directory, settings.filter).await;
                             let siblings =
@@ -109,25 +102,18 @@ pub fn Pane() -> Html {
                                 children: Some(children),
                                 siblings: Some(siblings),
                             });
-                        });
+                        }
                     }
-                }
+                });
             },
             state.clone(),
         );
     }
 
     let updatedirectory_with_path = {
-        let state = state.clone();
         move |dir: PathBuf| {
             let directory = Rc::new(dir);
             crate::app::data::update_directory(Some(directory.clone()));
-            let new_state = Contents {
-                directory: Some(directory),
-                children: None,
-                siblings: None,
-            };
-            state.set(new_state);
         }
     };
 
@@ -140,7 +126,6 @@ pub fn Pane() -> Html {
 
     let size = sizes.pane();
     let split_pane_size = sizes.split_pane();
-    let border_color = theme.spare();
 
     let style = format! {"
     display: flex;
@@ -151,11 +136,8 @@ pub fn Pane() -> Html {
 
     let split_pane_style = format! {"
     display: flex;
-    flex-direction: row;
     gap: 0;
     {split_pane_size}
-    border: 1px solid {border_color};
-    box-sizing: border-box;
     "};
 
     html! {

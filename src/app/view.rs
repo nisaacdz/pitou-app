@@ -2,11 +2,14 @@ use yew::prelude::*;
 
 use crate::app::{ApplicationContext, SearchPage};
 
-use super::{cview::*, AppView, BottomPane, HomeView, Pane, ToolBar};
+use super::{
+    cview::*, AppView, BottomPane, HomeView, Pane, Settings, SettingsView, Theme, ToolBar,
+};
 
 #[derive(PartialEq, Properties)]
 pub struct ContentViewProp {
-    pub updateview: Callback<AppView>,
+    pub updatesettings: Callback<Settings>,
+    pub updatetheme: Callback<Theme>,
 }
 
 #[function_component]
@@ -19,6 +22,18 @@ pub fn ContentView(prop: &ContentViewProp) -> Html {
     let force_update = use_force_update();
 
     let updateui = { move |_| force_update.force_update() };
+
+    let updatetheme = prop.updatetheme.clone();
+    let updatesettings = prop.updatesettings.clone();
+
+    let updateview = {
+        let updatesettings = prop.updatesettings.clone();
+        move |newview| {
+            let mut settings = settings;
+            settings.view = newview;
+            updatesettings.emit(settings)
+        }
+    };
 
     let background_color = theme.background1();
     let size = sizes.screen();
@@ -49,7 +64,7 @@ pub fn ContentView(prop: &ContentViewProp) -> Html {
             <div {style} >
                 <ToolBar {updateui}/>
                 <div style = {middle_style}>
-                    <LeftPane updateview = {prop.updateview.clone()}/>
+                    <LeftPane {updateview}/>
                     <Pane/>
                 </div>
                 <BottomPane/>
@@ -59,19 +74,28 @@ pub fn ContentView(prop: &ContentViewProp) -> Html {
             <div {style} >
                 <ToolBar {updateui}/>
                 <div style = {middle_style}>
-                    <LeftPane updateview = {prop.updateview.clone()}/>
-                    <HomeView/>
+                    <LeftPane updateview = {updateview.clone()}/>
+                    <HomeView {updateview}/>
                 </div>
                 <BottomPane/>
             </div>
         },
-        AppView::Settings => html! { <h1>{"Hello Settings"}</h1> },
+        AppView::Settings => html! {
+            <div {style} >
+                <ToolBar {updateui}/>
+                <div style = {middle_style}>
+                    <LeftPane {updateview}/>
+                    <SettingsView updatetheme = {updatetheme.clone()} updatesettings = {updatesettings.clone()}/>
+                </div>
+                <BottomPane/>
+            </div>
+        },
         AppView::Search => html! {
             <div {style} >
                 <ToolBar {updateui}/>
                 <div style = {middle_style}>
-                    <LeftPane updateview = {prop.updateview.clone()}/>
-                    <SearchPage/>
+                    <LeftPane updateview = {updateview.clone()}/>
+                    <SearchPage {updateview}/>
                 </div>
                 <BottomPane/>
             </div>
@@ -79,6 +103,3 @@ pub fn ContentView(prop: &ContentViewProp) -> Html {
         _ => html! { <h1>{"Unimplemented"}</h1> },
     }
 }
-
-#[allow(unused)]
-pub struct OpeningView {}

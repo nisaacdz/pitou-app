@@ -93,7 +93,7 @@ impl Filter {
     /// Returns true if the given file should be excluded and false otherwise
     pub fn exclude(self, file: &File) -> bool {
         (self.dot_hidden && file.name().starts_with('.'))
-            || (self.sys_hidden && file.name().starts_with('~'))
+            || (self.sys_hidden && (file.name().starts_with('~') || file.name().starts_with('$')))
             || (self.file && file.metadata().is_file())
             || (self.dir && file.metadata().is_dir())
             || (self.link && file.metadata().is_link())

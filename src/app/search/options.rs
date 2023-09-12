@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use yew::prelude::*;
 
 use crate::app::ApplicationContext;
@@ -6,8 +8,7 @@ use web_sys::{HtmlInputElement, HtmlSelectElement};
 
 #[derive(PartialEq, Properties)]
 pub struct SearchOptionsCmpProp {
-    pub onsubmit: Callback<(String, SearchOptions)>,
-    //collapse: Callback<()>,
+    pub onsubmit: Callback<(Rc<String>, SearchOptions)>,
 }
 
 #[function_component]
@@ -17,8 +18,21 @@ pub fn SearchOptionsCmp(prop: &SearchOptionsCmpProp) -> Html {
         sizes,
         settings: _,
     } = use_context().unwrap();
-    let options = use_state_eq(|| SearchOptions::new());
-    let input_ref = use_node_ref();
+    let input = use_state(|| {
+        if let Some((input, _)) = crate::app::data::search_options() {
+            input
+        } else {
+            Rc::new(String::new())
+        }
+    });
+
+    let options = use_state_eq(|| {
+        if let Some((_, options)) = crate::app::data::search_options() {
+            options
+        } else {
+            SearchOptions::new()
+        }
+    });
 
     let background_color = theme.background2();
     let border_color = theme.spare();
@@ -57,13 +71,22 @@ pub fn SearchOptionsCmp(prop: &SearchOptionsCmpProp) -> Html {
     {button_size}
     "};
 
+    let oninput = {
+        let input = input.clone();
+        move |e: InputEvent| {
+            let cnt = e.target_dyn_into::<HtmlInputElement>().unwrap().value();
+            input.set(Rc::new(cnt))
+        }
+    };
+
     let onsubmit = {
         let options = options.clone();
         let onsubmit = prop.onsubmit.clone();
-        let input_ref = input_ref.clone();
+        let input = input.clone();
         move |e: SubmitEvent| {
             e.prevent_default();
-            let key = input_ref.cast::<HtmlInputElement>().unwrap().value();
+            let key = (*input).clone();
+            crate::app::data::update_search_options(*options, key.clone());
             onsubmit.emit((key, *options))
         }
     };
@@ -149,7 +172,7 @@ pub fn SearchOptionsCmp(prop: &SearchOptionsCmpProp) -> Html {
 
     html! {
         <div class="search-options" style={style}>
-            <input style={input_style} class="search-input" type="text" ref={input_ref} {placeholder}/>
+            <input style={input_style} class="search-input" type="text" {oninput} {placeholder} value = {(**input).clone()}/>
             <span class="title">{"Search Options"}</span>
             <form {onsubmit}>
                 <div class="form-item">
@@ -177,19 +200,19 @@ pub fn SearchOptionsCmp(prop: &SearchOptionsCmpProp) -> Html {
                 <div class="form-item">
                     <label>
                         {"Files"}
-                        <input class="checkbox-input" type="checkbox" checked={(&*options).filter.file} onchange={toggleincludefiles} />
+                        <input class="checkbox-input" type="checkbox" checked={!(&*options).filter.file} onchange={toggleincludefiles} />
                     </label>
                 </div>
                 <div class="form-item">
                     <label>
                         {"Folders"}
-                        <input class="checkbox-input" type="checkbox" checked={(&*options).filter.dir} onchange={toggleincludedirs} />
+                        <input class="checkbox-input" type="checkbox" checked={!(&*options).filter.dir} onchange={toggleincludedirs} />
                     </label>
                 </div>
                 <div class="form-item">
                     <label>
                         {"Symlinks"}
-                        <input class="checkbox-input" type="checkbox" checked={(&*options).filter.link} onchange={toggleincludelinks} />
+                        <input class="checkbox-input" type="checkbox" checked={!(&*options).filter.link} onchange={toggleincludelinks} />
                     </label>
                 </div>
                 <button class="submit-button card" type="submit" style = {submit_button_style}>{"Search"}</button>

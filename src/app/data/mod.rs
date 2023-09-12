@@ -1,9 +1,29 @@
 mod selections;
+use backend::{File, SearchOptions};
+pub use selections::*;
 use std::{path::PathBuf, rc::Rc};
 
-pub use selections::*;
-
 static mut DIRECTORY: Option<Rc<PathBuf>> = None;
+static mut SEARCH_RESULTS: Option<Rc<Vec<File>>> = None;
+static mut SEARCH_OPTIONS: Option<(Rc<String>, SearchOptions)> = None;
+
+pub fn update_search_results(results: Rc<Vec<File>>) {
+    unsafe {
+        SEARCH_RESULTS = Some(results);
+    }
+}
+
+pub fn update_search_options(options: SearchOptions, input: Rc<String>) {
+    unsafe { SEARCH_OPTIONS = Some((input, options)) }
+}
+
+pub fn search_options() -> Option<(Rc<String>, SearchOptions)> {
+    unsafe { SEARCH_OPTIONS.clone() }
+}
+
+pub fn search_results() -> Option<Rc<Vec<File>>> {
+    unsafe { SEARCH_RESULTS.clone() }
+}
 
 pub fn update_directory(newval: Option<Rc<PathBuf>>) {
     unsafe { DIRECTORY = newval }
@@ -13,9 +33,11 @@ pub fn directory() -> Option<Rc<PathBuf>> {
     unsafe { DIRECTORY.clone() }
 }
 
-const UNIQUE_LEN: usize = 10;
+#[allow(unused)]
+const UNIQUE_LEN: usize = 5;
 
 /// returns a new unique string that can be usefull for representing keys of components
+#[allow(unused)]
 pub fn unique() -> String {
     generate_string(UNIQUE_LEN)
 }

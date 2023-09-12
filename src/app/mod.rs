@@ -12,6 +12,7 @@ mod cview;
 mod home;
 mod search;
 mod settings;
+mod settingsview;
 mod view;
 
 pub mod data;
@@ -22,6 +23,7 @@ pub use cview::*;
 pub use home::*;
 pub use search::*;
 pub use settings::*;
+pub use settingsview::*;
 pub use view::*;
 
 #[function_component]
@@ -51,18 +53,27 @@ pub fn App() -> Html {
         }
     });
 
-    let updateview = {
-        let application_ctx = application_ctx.clone();
-        move |newview| {
-            let mut newctx = *application_ctx;
-            newctx.settings.view = newview;
-            application_ctx.set(newctx)
+    let updatesettings = {
+        let applicationctx = application_ctx.clone();
+        move |newsettings| {
+            let mut newval = *applicationctx;
+            newval.settings = newsettings;
+            applicationctx.set(newval)
+        }
+    };
+
+    let updatetheme = {
+        let applicationctx = application_ctx.clone();
+        move |newtheme| {
+            let mut newval = *applicationctx;
+            newval.theme = newtheme;
+            applicationctx.set(newval)
         }
     };
 
     html! {
         <ContextProvider<ApplicationContext> context = { *application_ctx }>
-            <ContentView {updateview}/>
+            <ContentView {updatesettings} {updatetheme} />
         </ContextProvider<ApplicationContext>>
     }
 }

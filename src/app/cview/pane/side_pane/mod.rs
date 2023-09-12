@@ -23,7 +23,7 @@ pub fn SidePane(prop: &SidePaneProps) -> Html {
     let ApplicationContext {
         theme,
         sizes,
-        settings,
+        settings: _,
     } = use_context().unwrap();
 
     let filter = use_state(|| None);
@@ -34,6 +34,9 @@ pub fn SidePane(prop: &SidePaneProps) -> Html {
 
     let style = format! {"
     background-color: {background_color};
+    display: flex;
+    flex-direction: column;
+    gap: 0;
     position: relative;
     border: 1px solid {spare_color};
     box-sizing: border-box;
@@ -43,7 +46,6 @@ pub fn SidePane(prop: &SidePaneProps) -> Html {
     let height = size.height - top;
 
     let inner_style = format! {"
-    position: absolute;
     display: flex;
     flex-direction: column;
     gap: 0;
@@ -51,8 +53,8 @@ pub fn SidePane(prop: &SidePaneProps) -> Html {
     align-items: center;
     overflow-y: auto;
     overflow-x: hidden;
+    background-color: {background_color};
 
-    top: {top}px;
     height: {height}px;
     width: 100%;
     "};
@@ -114,7 +116,6 @@ pub fn SidePane(prop: &SidePaneProps) -> Html {
     let content = if let Some(files) = prop.siblings.as_ref() {
         let entries = files
             .iter()
-            .filter(|file| settings.filter.include(file))
             .filter(|item| {
                 use backend::StrOps;
                 filter.as_ref().map(|pat| item.name().starts_with_ignore_case(pat)).unwrap_or(true)

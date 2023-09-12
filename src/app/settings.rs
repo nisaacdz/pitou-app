@@ -392,7 +392,7 @@ impl Settings {
     pub fn settings_or_default() -> Self {
         Self::DEFAULT
     }
-    
+
     pub fn view(self) -> AppView {
         self.view
     }

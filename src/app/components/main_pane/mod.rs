@@ -1,12 +1,10 @@
 mod dsc;
 mod rows;
-mod space;
 
 use crate::app::{ApplicationContext, LoadingDisplay};
 use backend::{File, PitouType};
 use dsc::*;
 use rows::*;
-use space::*;
 use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
 
@@ -31,7 +29,7 @@ pub fn MainPane(prop: &MainPaneProps) -> Html {
         settings: _,
     } = use_context().unwrap();
 
-    let selections = use_state(|| {
+    let selections: UseStateHandle<Rc<RefCell<HashSet<File>>>> = use_state(|| {
         let vals = Rc::new(RefCell::new(HashSet::new()));
         crate::app::data::init_selections(vals.clone());
         vals
@@ -55,16 +53,31 @@ pub fn MainPane(prop: &MainPaneProps) -> Html {
 
     let onclick = move |e: MouseEvent| e.prevent_default();
 
-    let toggleselect = {
+    let onselect = {
         let selections = selections.clone();
         let children = prop.children.clone();
-        move |idx: usize| {
+        move |(idx, append): (usize, bool)| {
             if let Some(children) = &children {
-                let newselections = (&*selections).clone();
+                let newselections = (*selections).clone();
                 let mut borrow = newselections.borrow_mut();
-                if !borrow.remove(&children[idx]) {
-                    borrow.insert(children[idx].clone());
+                match append {
+                    true => {
+                        if borrow.contains(&children[idx]) {
+                            borrow.remove(&children[idx]);
+                        } else {
+                            borrow.insert(children[idx].clone());
+                        }
+                    }
+                    false => {
+                        if borrow.contains(&children[idx]) && borrow.len() == 1 {
+                            borrow.clear()
+                        } else {
+                            borrow.clear();
+                            borrow.insert(children[idx].clone());
+                        }
+                    }
                 }
+
                 std::mem::drop(borrow);
                 selections.set(newselections);
             }
@@ -133,6 +146,9 @@ pub fn MainPane(prop: &MainPaneProps) -> Html {
     let size = sizes.mainpane();
 
     let style = format! {"
+    display: flex;
+    flex-direction: column;
+    gap: 0;
     background-color: {background_color};
     position: relative;
     border: 1px solid {spare_color};
@@ -143,7 +159,6 @@ pub fn MainPane(prop: &MainPaneProps) -> Html {
     let height = size.height - top;
 
     let inner_style = format! {"
-    position: absolute;
     display: flex;
     flex-direction: column;
     gap: 0;
@@ -153,9 +168,15 @@ pub fn MainPane(prop: &MainPaneProps) -> Html {
     overflow-x: hidden;
     background-color: {background_color};
 
-    top: {top}px;
     height: {height}px;
     width: 100%;
+    "};
+
+    let mut free_area_size = sizes.row();
+    free_area_size.value *= 3;
+    let free_area_style = format! {"
+    {free_area_size}
+    width: 100px;
     "};
 
     // if let Some(_) = &*metadata {
@@ -169,13 +190,13 @@ pub fn MainPane(prop: &MainPaneProps) -> Html {
         .as_ref()
         .map(|children| children.iter()
             .enumerate()
-            .map(|(idx, file)| (idx, file.clone(), ondbclick.clone(), toggleselect.clone(), selections.borrow().contains(file)))
-            .map(|(idx, file, ondbclick, toggleselect, selected)| html! { <Row {idx} {file} {toggleselect} {ondbclick} {selected}/> })
+            .map(|(idx, file)| (idx, file.clone(), ondbclick.clone(), onselect.clone(), selections.borrow().contains(file)))
+            .map(|(idx, file, ondbclick, onselect, selected)| html! { <Row {idx} {file} {onselect} {ondbclick} {selected}/> })
             .collect::<Html>())
         .map(|entries| html! {
             <div style = {inner_style}>
                 { entries }
-                <FreeArea />
+                <div style = {free_area_style}></div>
             </div>
         })
         .unwrap_or(html! { <LoadingScreen /> });

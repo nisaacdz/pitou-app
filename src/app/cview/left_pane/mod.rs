@@ -44,7 +44,7 @@ pub fn LeftPane(prop: &LeftPaneProps) -> Html {
             <BookmarksButton />
             <LockedButton />
             <CloudButton />
-            <SettingsButton />
+            <SettingsButton updateview = {prop.updateview.clone()}/>
         </div>
     }
 }
@@ -167,7 +167,7 @@ fn HomeButton(prop: &ButtonProp) -> Html {
 }
 
 #[function_component]
-fn SettingsButton() -> Html {
+fn SettingsButton(prop: &ButtonProp) -> Html {
     let ApplicationContext {
         theme,
         sizes,
@@ -182,6 +182,11 @@ fn SettingsButton() -> Html {
     let mut outer_size = sizes.menu_item();
     outer_size.width -= 2;
     let icon_style = sizes.menu_item_icon();
+
+    let onclick = {
+        let updateview = prop.updateview.clone();
+        move |_| updateview.emit(AppView::Settings)
+    };
 
     let style = format! {"
     {outer_size}
@@ -199,7 +204,7 @@ fn SettingsButton() -> Html {
 
     html! {
         <div {style} class = "menu_icon" tooltip = "settings">
-            <img class = "card" style = {icon_style} src="./public/icons/side/settings.png"/>
+            <img {onclick} class = "card" style = {icon_style} src="./public/icons/side/settings.png"/>
         </div>
     }
 }

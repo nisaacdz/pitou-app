@@ -1,5 +1,6 @@
-use crate::{app::ApplicationContext, background_color};
+use crate::app::{AppView, ApplicationContext};
 use backend::File;
+use std::rc::Rc;
 use yew::prelude::*;
 
 #[derive(PartialEq)]
@@ -10,6 +11,19 @@ pub enum LocalFolderKind {
     Audios(File),
     Videos(File),
     Pictures(File),
+}
+
+impl LocalFolderKind {
+    fn file(&self) -> &File {
+        match self {
+            LocalFolderKind::Desktop(f) => f,
+            LocalFolderKind::Downloads(f) => f,
+            LocalFolderKind::Documents(f) => f,
+            LocalFolderKind::Audios(f) => f,
+            LocalFolderKind::Videos(f) => f,
+            LocalFolderKind::Pictures(f) => f,
+        }
+    }
 }
 
 impl LocalFolderKind {
@@ -28,6 +42,7 @@ impl LocalFolderKind {
 #[derive(PartialEq, Properties)]
 pub struct LocalFolderProps {
     pub kind: LocalFolderKind,
+    pub updateview: Callback<AppView>,
 }
 
 #[function_component]
@@ -37,20 +52,18 @@ pub fn LocalCmp(prop: &LocalFolderProps) -> Html {
         settings: _,
         sizes,
     } = use_context().unwrap();
-    let ishovered = use_state_eq(|| false);
-
-    let onmouseover = {
-        let ishovered = ishovered.clone();
-        move |_| ishovered.set(true)
-    };
-
-    let onmouseout = {
-        let ishovered = ishovered.clone();
-        move |_| ishovered.set(false)
-    };
 
     let size = sizes.home_local();
     let text_color = theme.foreground1();
+
+    let onclick = {
+        let updateview = prop.updateview.clone();
+        let dir = Rc::new(prop.kind.file().path().clone());
+        move |_| {
+            crate::app::data::update_directory(Some(dir.clone()));
+            updateview.emit(AppView::Explorer)
+        }
+    };
 
     let style = format! {"
     align-items: center;
@@ -60,8 +73,7 @@ pub fn LocalCmp(prop: &LocalFolderProps) -> Html {
     padding-left: 10px;
     color: {text_color};
     {size}
-    {}
-    ", background_color!(*ishovered, theme.background1())};
+    "};
 
     let img_style = format! {"
     display: flex;
@@ -93,7 +105,7 @@ pub fn LocalCmp(prop: &LocalFolderProps) -> Html {
     let name = html! { <span>{ prop.kind.pitou().name() }</span> };
 
     html! {
-        <div {style} {onmouseover} {onmouseout}>
+        <div {style} {onclick} class = "local">
             <div style = {img_style}> {img} </div>
             {name}
         </div>

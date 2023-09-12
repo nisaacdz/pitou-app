@@ -120,15 +120,19 @@ fn EnterPath(prop: &EnterPathProps) -> Html {
         sizes: _,
         settings: _,
     } = use_context().unwrap();
-    let input_ref = use_node_ref();
+    let input = use_state(|| prop.folder.display().to_string());
     let onclick = move |e: MouseEvent| e.stop_propagation();
+
+    let oninput = {
+        let input = input.clone();
+        move |e: InputEvent| input.set(e.target_dyn_into::<HtmlInputElement>().unwrap().value())
+    };
 
     let style = format! {"
     display: flex;
     align-items: center;
-    justify-content: center;
     position: relative;
-    width: 100%;
+    width: 90%;
     height: 80%
     box-sizing: border-box;
     "};
@@ -141,20 +145,20 @@ fn EnterPath(prop: &EnterPathProps) -> Html {
 
     let onsubmit = {
         let finished = prop.finished.clone();
-        let input_ref = input_ref.clone();
+        let input = input.clone();
 
         move |e: SubmitEvent| {
             e.prevent_default();
-            let entered = input_ref.cast::<HtmlInputElement>().unwrap().value();
+            let entered = (*input).clone();
             finished.emit(entered)
         }
     };
 
-    let value = prop.folder.display().to_string();
+    let value = (*input).clone();
 
     html! {
         <form {style} {onsubmit}>
-            <input type = "text" ref = {input_ref} {value} {onclick} style = {inner_style}/>
+            <input type = "text" {oninput} {value} {onclick} style = {inner_style}/>
         </form>
     }
 }
@@ -179,7 +183,7 @@ fn Ancestor(prop: &AncestorProps) -> Html {
     let border_color = theme.spare();
 
     let style = format! {"
-    height: 80%;
+    height: min-content;
     display: flex;
     flex-direction: row;
     align-items: center;

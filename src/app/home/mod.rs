@@ -1,5 +1,6 @@
 use crate::app::ApplicationContext;
 use backend::Drive;
+use std::rc::Rc;
 use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
 
@@ -7,8 +8,15 @@ mod locals;
 
 use locals::{LocalCmp, LocalFolderKind};
 
+use super::AppView;
+
+#[derive(PartialEq, Properties)]
+pub struct HomeViewProps {
+    pub updateview: Callback<AppView>,
+}
+
 #[function_component]
-pub fn HomeView() -> Html {
+pub fn HomeView(prop: &HomeViewProps) -> Html {
     let ApplicationContext {
         theme,
         sizes,
@@ -23,21 +31,28 @@ pub fn HomeView() -> Html {
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: left;
     {size}
     background-color: {background};
     border: 1px solid {foreground};
     box-sizing: border-box;
     "};
+
     html! {
         <div {style}>
-            <LocalFolders />
-            <DrivesPane />
+            <LocalFolders updateview = {prop.updateview.clone()} />
+            <DrivesPane updateview = {prop.updateview.clone()}/>
         </div>
     }
 }
 
+#[derive(PartialEq, Properties)]
+struct LocalFoldersProp {
+    updateview: Callback<AppView>,
+}
+
 #[function_component]
-fn LocalFolders() -> Html {
+fn LocalFolders(prop: &LocalFoldersProp) -> Html {
     let ApplicationContext {
         theme: _,
         sizes: _,
@@ -61,11 +76,17 @@ fn LocalFolders() -> Html {
     }
 
     let style = format! {"
+    width: 70%;
+    height: max-content;
+    "};
+
+    let inner_style = format! {"
     display: flex;
+    gap: 30px;
     flex-wrap: wrap;
-    width: 80%;
-    height: 300px;
-    gap: 45px;
+    margin: 20px;
+    align-items: center;
+    width: 100%;
     "};
 
     let entries = locals
@@ -80,15 +101,15 @@ fn LocalFolders() -> Html {
                  pictures,
              }| {
                 let documents =
-                    html! { <LocalCmp kind = {LocalFolderKind::Documents(documents.clone())}/> };
-                let videos = html! { <LocalCmp kind = {LocalFolderKind::Videos(videos.clone())}/> };
-                let audios = html! { <LocalCmp kind = {LocalFolderKind::Audios(audios.clone())}/> };
+                    html! { <LocalCmp kind = {LocalFolderKind::Documents(documents.clone())} updateview = {prop.updateview.clone()} /> };
+                let videos = html! { <LocalCmp kind = {LocalFolderKind::Videos(videos.clone())} updateview = {prop.updateview.clone()}/> };
+                let audios = html! { <LocalCmp kind = {LocalFolderKind::Audios(audios.clone())} updateview = {prop.updateview.clone()}/> };
                 let downloads =
-                    html! { <LocalCmp kind = {LocalFolderKind::Downloads(downloads.clone())}/> };
+                    html! { <LocalCmp kind = {LocalFolderKind::Downloads(downloads.clone())} updateview = {prop.updateview.clone()}/> };
                 let desktop =
-                    html! { <LocalCmp kind = {LocalFolderKind::Desktop(desktop.clone())}/> };
+                    html! { <LocalCmp kind = {LocalFolderKind::Desktop(desktop.clone())} updateview = {prop.updateview.clone()}/> };
                 let pictures =
-                    html! { <LocalCmp kind = {LocalFolderKind::Pictures(pictures.clone())}/> };
+                    html! { <LocalCmp kind = {LocalFolderKind::Pictures(pictures.clone())} updateview = {prop.updateview.clone()}/> };
 
                 Some(documents)
                     .into_iter()
@@ -103,16 +124,22 @@ fn LocalFolders() -> Html {
         .unwrap_or_default();
 
     html! {
-        <div {style}>
-        {
-            entries
-        }
-        </div>
+        <details {style} open = {true}>
+            <summary>{"Local Folders"}</summary>
+            <div class = "under-detail" style = {inner_style}>
+                {entries}
+            </div>
+        </details>
     }
 }
 
+#[derive(PartialEq, Properties)]
+struct DrivesPaneProp {
+    updateview: Callback<AppView>,
+}
+
 #[function_component]
-fn DrivesPane() -> Html {
+fn DrivesPane(prop: &DrivesPaneProp) -> Html {
     let ApplicationContext {
         theme: _,
         sizes: _,
@@ -134,8 +161,8 @@ fn DrivesPane() -> Html {
     }
 
     let style = format! {"
-    width: 100%;
-    height: 300px;
+    width: 70%;
+    height: max-content;
     "};
 
     let inner_style = format! {"
@@ -144,6 +171,7 @@ fn DrivesPane() -> Html {
     flex-wrap: wrap;
     margin: 20px;
     align-items: center;
+    justify-content: left;
     width: 100%;
     "};
 
@@ -152,7 +180,7 @@ fn DrivesPane() -> Html {
         .map(|drives| {
             drives
                 .into_iter()
-                .map(|drive| html! { <DriveCmp drive = {drive.clone()}/>})
+                .map(|drive| html! { <DriveCmp drive = {drive.clone()} updateview = {prop.updateview.clone()}/>})
                 .collect::<Html>()
         })
         .unwrap_or_default();
@@ -160,7 +188,7 @@ fn DrivesPane() -> Html {
     html! {
         <details {style} open = {true}>
             <summary>{"Devices and drives"}</summary>
-            <div style = {inner_style} class = "test_me_rm">
+            <div style = {inner_style} class = "drive_section">
                 {entries}
             </div>
         </details>
@@ -170,6 +198,7 @@ fn DrivesPane() -> Html {
 #[derive(PartialEq, Properties)]
 struct DriveProp {
     drive: Drive,
+    updateview: Callback<AppView>,
 }
 
 #[function_component]
@@ -190,6 +219,7 @@ fn DriveCmp(prop: &DriveProp) -> Html {
     display: flex;
     flex-direction: column;
     gap: 0;
+    cursor: pointer;
     {totalsize}
     "};
 
@@ -217,6 +247,15 @@ fn DriveCmp(prop: &DriveProp) -> Html {
 
     use backend::DriveKind;
 
+    let onclick = {
+        let updateview = prop.updateview.clone();
+        let dir = Rc::new(prop.drive.mount_point().clone());
+        move |_| {
+            crate::app::data::update_directory(Some(dir.clone()));
+            updateview.emit(AppView::Explorer)
+        }
+    };
+
     let img = match prop.drive.kind() {
         DriveKind::HDD => html! { <img src="./public/icons/home/hdd.png"/> },
         DriveKind::SSD => html! { <img src="./public/icons/home/ssd.png"/> },
@@ -235,7 +274,7 @@ fn DriveCmp(prop: &DriveProp) -> Html {
     let value = format! {"{}", prop.drive.total_space() - prop.drive.free_space()};
 
     html! {
-        <div {style}>
+        <div {style} {onclick}>
             <span style = {span_style}>{dsc}</span>
             <div style = {inner_style}>
                 {img}

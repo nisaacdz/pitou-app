@@ -1,21 +1,26 @@
-use std::{path::PathBuf, rc::Rc, time::Duration};
+use std::{path::PathBuf, rc::Rc};
 
-use backend::{File, SearchMsg};
+use backend::{File, SearchMsg, SearchOptions};
 use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
 
-use crate::app::{AncestorsTabs, ApplicationContext, MainPane};
+use crate::app::{AncestorsTabs, ApplicationContext, MainPane, AppView};
 
 mod options;
 
 use options::SearchOptionsCmp;
 
+#[derive(PartialEq, Properties)]
+pub struct SearchPageProps {
+    pub updateview: Callback<AppView>,
+}
+
 #[function_component]
-pub fn SearchPage() -> Html {
+pub fn SearchPage(prop: &SearchPageProps) -> Html {
     let dir = use_state(|| crate::app::data::directory().map(|p| p.clone()));
 
     {
-        let dir = dir.clone();
+        let dir: UseStateHandle<Option<Rc<PathBuf>>> = dir.clone();
         use_effect_with_deps(
             move |_| {
                 if let None = &*dir {
@@ -32,10 +37,11 @@ pub fn SearchPage() -> Html {
     }
 
     let updatedirectory = {
-        let dir = dir.clone();
+        let updateview = prop.updateview.clone();
         move |file: File| {
             let path = Rc::new(file.path().clone());
-            dir.set(Some(path));
+            crate::app::data::update_directory(Some(path));
+            updateview.emit(AppView::Explorer)
         }
     };
 
@@ -85,39 +91,44 @@ pub enum SearchState {
     Searching,
 }
 
-#[derive(Clone)]
-pub struct SearchResultState {
-    results: std::rc::Rc<Vec<File>>,
-    state: SearchState,
-}
-
-impl PartialEq for SearchResultState {
+impl PartialEq for SearchState {
     fn eq(&self, other: &Self) -> bool {
-        self.state == other.state
+        matches!(self, Self::Idle) && matches!(other, Self::Idle)
     }
 }
 
-impl Default for SearchResultState {
+#[derive(PartialEq)]
+struct SearchData {
+    input: Rc<String>,
+    options: SearchOptions,
+}
+
+impl Default for SearchData {
     fn default() -> Self {
-        Self {
-            results: std::rc::Rc::new(Vec::new()),
+        SearchData {
+            input: Rc::new(String::new()),
+            options: SearchOptions::new(),
+        }
+    }
+}
+
+struct SearchResult {
+    results: Rc<Vec<File>>,
+    state: SearchState,
+}
+
+impl Default for SearchResult {
+    fn default() -> Self {
+        SearchResult {
+            results: Rc::new(Vec::new()),
             state: SearchState::Idle,
         }
     }
 }
 
-impl SearchResultState {
-    fn results(&self) -> std::rc::Rc<Vec<File>> {
-        self.results.clone()
-    }
-    fn state(&self) -> SearchState {
-        self.state
-    }
-}
-
-impl PartialEq for SearchState {
+impl PartialEq for SearchResult {
     fn eq(&self, other: &Self) -> bool {
-        matches!(self, Self::Idle) && matches!(other, Self::Idle)
+        self.state == other.state
     }
 }
 
@@ -128,65 +139,90 @@ pub fn SearchView(prop: &SearchViewProps) -> Html {
         sizes,
         settings: _,
     } = use_context().unwrap();
-    let state = use_state_eq(|| SearchResultState::default());
+    let results = use_state(|| {
+        if let Some(results) = crate::app::data::search_results() {
+            SearchResult {
+                results,
+                state: SearchState::Idle,
+            }
+        } else {
+            SearchResult::default()
+        }
+    });
+    let search_data = use_state(|| None::<SearchData>);
 
     {
-        let state = state.clone();
+        let results = results.clone();
+        let search_data = search_data.clone();
 
         use_effect_with_deps(
-            move |search_state| {
-                let search_state = search_state.clone();
-
-                match search_state.state() {
-                    SearchState::Idle => {}
-                    SearchState::Searching => {
-                        spawn_local(async move {
-                            async_std::task::sleep(Duration::from_millis(100)).await;
-                            match crate::app::tasks::read_search_stream().await {
-                                Some(msg) => match msg {
-                                    SearchMsg::Terminated(items) => {
-                                        let results = if items.len() > 0 {
-                                            let mut results = (&*search_state.results()).clone();
-                                            results.extend(items);
-                                            std::rc::Rc::new(results)
-                                        } else {
-                                            search_state.results()
-                                        };
-
-                                        let state = SearchState::Idle;
-
-                                        crate::app::tasks::terminate_search_stream().await;
-
-                                        search_state.set(SearchResultState { results, state })
-                                    }
-                                    SearchMsg::Searching(items) => {
-                                        println!("search stream proceeding");
-                                        let results = if items.len() > 0 {
-                                            crate::app::tasks::terminate_search_stream().await;
-                                            let mut results = (&*search_state.results()).clone();
-                                            results.extend(items);
-                                            std::rc::Rc::new(results)
-                                        } else {
-                                            search_state.results()
-                                        };
-
-                                        let state = SearchState::Searching;
-
-                                        search_state.set(SearchResultState { results, state })
-                                    }
-                                },
-                                None => {
-                                    let results = search_state.results();
-                                    let state = SearchState::Searching;
-
-                                    search_state.set(SearchResultState { results, state })
-                                }
-                            }
+            move |search_data| {
+                if let Some(search_data) = &**search_data {
+                    if (*search_data).input.len() != 0 {
+                        results.set(SearchResult {
+                            results: Rc::new(Vec::new()),
+                            state: SearchState::Searching,
                         });
                     }
                 }
             },
-            state,
+            search_data,
+        );
+    }
+    {
+        let results = results.clone();
+        use_effect_with_deps(
+            |results| {
+                let results = results.clone();
+                spawn_local(async move {
+                    match crate::app::tasks::read_search_stream().await {
+                        Some(msg) => match msg {
+                            SearchMsg::Searching(values) => {
+                                let values = if values.len() > 0 {
+                                    let mut clone = (*results.results).clone();
+                                    clone.extend(values);
+                                    Rc::new(clone)
+                                } else {
+                                    results.results.clone()
+                                };
+
+                                let state = SearchState::Searching;
+                                results.set(SearchResult {
+                                    results: values,
+                                    state,
+                                })
+                            }
+                            SearchMsg::Terminated(values) => {
+                                let values = if values.len() > 0 {
+                                    let mut clone = (*results.results).clone();
+                                    clone.extend(values);
+                                    Rc::new(clone)
+                                } else {
+                                    results.results.clone()
+                                };
+                                crate::app::data::update_search_results(values.clone());
+                                spawn_local(async move {
+                                    crate::app::tasks::terminate_search_stream().await;
+                                });
+
+                                let state = SearchState::Idle;
+                                results.set(SearchResult {
+                                    results: values,
+                                    state,
+                                })
+                            }
+                        },
+                        None => {
+                            let newresult = SearchResult {
+                                results: results.results.clone(),
+                                state: SearchState::Idle,
+                            };
+                            results.set(newresult);
+                        }
+                    }
+                });
+            },
+            results,
         );
     }
 
@@ -200,28 +236,26 @@ pub fn SearchView(prop: &SearchViewProps) -> Html {
     "};
 
     let onsubmit = {
+        let search_data = search_data.clone();
         let dir = prop.dir.clone();
-        let search_state = state.clone();
-        move |(input, options)| {
+        move |(input, options): (Rc<String>, SearchOptions)| {
             let dir = dir.clone();
-            let search_state = search_state.clone();
-
+            let search_data = search_data.clone();
             spawn_local(async move {
-                if let Some(dir) = dir.as_ref() {
-                    crate::app::tasks::restart_stream_search(&input, (&**dir).as_ref(), options)
-                        .await;
-                    let results = std::rc::Rc::new(Vec::new());
-                    let state = SearchState::Searching;
-                    search_state.set(SearchResultState { results, state })
+                if let Some(dir) = &dir {
+                    crate::app::tasks::restart_stream_search(&*input, &**dir, options).await;
+                    search_data.set(Some(SearchData { input, options }));
                 }
             });
         }
     };
 
+    let children = Some((*results).results.clone());
+
     html! {
         <div {style}>
             <SearchOptionsCmp {onsubmit}/>
-            <MainPane children = {state.results()} updatedirectory = {prop.updatedirectory.clone()}/>
+            <MainPane {children} updatedirectory = {prop.updatedirectory.clone()}/>
         </div>
     }
 }
