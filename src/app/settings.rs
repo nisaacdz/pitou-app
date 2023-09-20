@@ -380,7 +380,7 @@ impl Default for Settings {
 impl Settings {
     pub const DEFAULT: Settings = Settings {
         view: AppView::Explorer,
-        refresh_rate: 120,
+        refresh_rate: 60,
         filter: Filter::DEFAULT,
     };
 

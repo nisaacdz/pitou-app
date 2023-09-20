@@ -1,6 +1,7 @@
 mod selections;
 use backend::{File, SearchOptions};
 pub use selections::*;
+
 use std::{path::PathBuf, rc::Rc};
 
 static mut DIRECTORY: Option<Rc<PathBuf>> = None;
@@ -131,4 +132,26 @@ pub fn generate_string(len: usize) -> String {
         res.push(next as char)
     }
     res
+}
+
+pub use mutex::SharedBorrow;
+
+mod mutex {
+    use std::{cell::UnsafeCell, rc::Rc};
+
+    #[derive(Clone)]
+    pub struct SharedBorrow<T> {
+        ptr: Rc<UnsafeCell<T>>,
+    }
+
+    impl<T> SharedBorrow<T> {
+        pub fn new(value: T) -> Self {
+            let ptr = Rc::new(UnsafeCell::new(value));
+
+            Self { ptr }
+        }
+        pub fn as_mut(&self) -> &mut T {
+            unsafe { &mut *self.ptr.get() }
+        }
+    }
 }

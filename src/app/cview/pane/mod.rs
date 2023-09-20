@@ -1,11 +1,10 @@
 mod side_pane;
 
-use crate::app::{AncestorsTabs, ApplicationContext, MainPane};
-use yew::prelude::*;
-
+use crate::app::{AncestorsTabs, ApplicationContext, MainPane, tasks::SpawnHandle, data::SharedBorrow};
 use wasm_bindgen_futures::spawn_local;
+use yew::{prelude::*, platform::time::sleep};
 
-use backend::File;
+use backend::{File, Filter};
 use std::path::PathBuf;
 
 use side_pane::*;
@@ -20,107 +19,66 @@ pub fn Pane() -> Html {
         settings,
     } = use_context().unwrap();
 
-    let state = use_state(|| Contents::default());
+    let directory = use_state(|| crate::app::data::directory());
+
+    let entries = use_state(|| Entries::new());
+
+    let aborthandle = use_state(|| SharedBorrow::new(None));
 
     {
-        let state = state.clone();
-        use_effect_with_deps(
-            move |state| {
-                let state = state.clone();
-                spawn_local(async move {
-                    match &*state {
-                        Contents {
-                            directory: None,
-                            children: _,
-                            siblings: _,
-                        } => {
-                            if let Some(directory) = crate::app::data::directory() {
-                                state.set(Contents {
-                                    directory: Some(directory.clone()),
-                                    children: None,
-                                    siblings: None,
-                                })
-                            } else {
-                                let state = state.clone();
-                                let directory =
-                                    Rc::new(crate::app::tasks::default_directory().await);
-                                crate::app::data::update_directory(Some(directory.clone()));
-                                state.set(Contents {
-                                    directory: Some(directory),
-                                    children: None,
-                                    siblings: None,
-                                })
-                            }
-                        }
-                        Contents {
-                            directory: Some(directory),
-                            children: Some(_),
-                            siblings: Some(_),
-                        } => {
-                            let state = state.clone();
-                            async_std::task::sleep(settings.refresh_wait()).await;
-                            // check to see if the state was not changed during sleep
-                            if matches!(crate::app::data::directory(), Some(sd) if &sd == directory)
-                            {
-                                let children =
-                                    crate::app::tasks::children(&**directory, settings.filter)
-                                        .await;
-                                let siblings =
-                                    crate::app::tasks::siblings(&**directory, settings.filter)
-                                        .await;
-                                let children = Rc::new(children);
-                                let siblings = Rc::new(siblings);
-                                state.set(Contents {
-                                    directory: Some(directory.clone()),
-                                    children: Some(children),
-                                    siblings: Some(siblings),
-                                });
-                            } else {
-                                let new_state = Contents {
-                                    directory: None,
-                                    children: None,
-                                    siblings: None,
-                                };
-                                state.set(new_state);
-                            }
-                        }
-                        Contents {
-                            directory: Some(directory),
-                            children: _,
-                            siblings: _,
-                        } => {
-                            let state = state.clone();
-                            let directory = directory.clone();
-                            let children =
-                                crate::app::tasks::children(&*directory, settings.filter).await;
-                            let siblings =
-                                crate::app::tasks::siblings(&*directory, settings.filter).await;
-                            let children = Rc::new(children);
-                            let siblings = Rc::new(siblings);
-                            state.set(Contents {
-                                directory: Some(directory.clone()),
-                                children: Some(children),
-                                siblings: Some(siblings),
-                            });
-                        }
+        let entries = entries.clone();
+        let directory = directory.clone();
+        let aborthandle = aborthandle.clone();
+
+        use_effect(move || {
+            let newhandle = SpawnHandle::new(async move {
+                if let Some(cur) = &*directory {
+                    if entries.is_none() {
+                        let newentries = Entries::init(&**cur, settings.filter).await;
+                        entries.set(newentries);
+                    } else {
+                        sleep(settings.refresh_wait()).await;
+                        let newentries = entries.refresh( &**cur, settings.filter).await;
+                        entries.set(newentries)
                     }
-                });
-            },
-            state.clone(),
-        );
+                } else {
+                    let newdirectory = Some(Rc::new(crate::app::tasks::default_directory().await));
+                    crate::app::data::update_directory(newdirectory.clone());
+                    directory.set(newdirectory);
+                }
+            });
+
+            if let Some(mut oldhandle) = aborthandle.as_mut().replace(newhandle) {
+                oldhandle.cancel()
+            }
+
+            spawn_local(async move {
+                if let Some(future) = aborthandle.as_mut() {
+                    future.await;
+                }
+            });
+        })
     }
 
-    let updatedirectory_with_path = {
+    let updatedir_with = Callback::from({
+        let entries = entries.clone();
+        let directory = directory.clone();
         move |dir: PathBuf| {
-            let directory = Rc::new(dir);
-            crate::app::data::update_directory(Some(directory.clone()));
+            let newdir = Some(Rc::new(dir));
+            crate::app::data::update_directory(newdir.clone());
+            directory.set(newdir);
+            entries.set(Entries::new())
         }
-    };
+    });
 
     let updatedirectory = Callback::from({
-        move |dir: File| {
-            let directory = Rc::new(dir.path().clone());
-            crate::app::data::update_directory(Some(directory.clone()));
+        let directory = directory.clone();
+        let entries = entries.clone();
+        move |file: File| {
+            let newdir = Some(Rc::new(file.path().clone()));
+            crate::app::data::update_directory(newdir.clone());
+            directory.set(newdir);
+            entries.set(Entries::new())
         }
     });
 
@@ -140,36 +98,60 @@ pub fn Pane() -> Html {
     {split_pane_size}
     "};
 
+    gloo::console::log!(format! {"{:#?}", &*entries});
+
     html! {
         <div {style}>
-            <AncestorsTabs updatedirectory = {updatedirectory_with_path.clone()} folder = {state.directory()}/>
+            <AncestorsTabs updatedirectory = { updatedir_with.clone() } folder = {(*directory).clone()}/>
             <div style = {split_pane_style}>
-                <SidePane siblings = { state.siblings() } directory = { state.directory() } updatedirectory = { updatedirectory_with_path } />
-                <MainPane {updatedirectory} children = { state.children() }/>
+                <SidePane siblings = { entries.siblings() } directory = {(*directory).clone()} updatedirectory = { updatedir_with } />
+                <MainPane {updatedirectory} children = { entries.children() }/>
             </div>
         </div>
     }
 }
 
-struct Contents {
-    directory: Option<Rc<PathBuf>>,
+
+#[derive(Clone)]
+struct Entries {
     children: Option<Rc<Vec<File>>>,
     siblings: Option<Rc<Vec<File>>>,
 }
 
-impl PartialEq for Contents {
-    fn eq(&self, _: &Self) -> bool {
-        false
+impl std::fmt::Debug for Entries {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut dbs = f.debug_struct("Entries");
+        dbs.field("children", &self.children.as_ref().map(|v| &**v));
+        dbs.field("siblings", &self.siblings.as_ref().map(|v| &**v));
+        dbs.finish()
     }
 }
 
-impl Contents {
+impl Default for Entries {
     fn default() -> Self {
-        Contents {
-            directory: None,
+        Entries {
             children: None,
             siblings: None,
         }
+    }
+}
+
+impl Entries {
+    fn init_with(children: Vec<File>, siblings: Vec<File>) -> Self {
+        let children = Some(Rc::new(children));
+        let siblings = Some(Rc::new(siblings));
+
+        Self { children, siblings }
+    }
+
+    fn is_none(&self) -> bool {
+        matches!(&self.children, None)
+    }
+
+    async fn init(directory: &PathBuf, filter: Filter) -> Self {
+        let children = crate::app::tasks::children(directory, filter).await;
+        let siblings = crate::app::tasks::siblings(directory, filter).await;
+        Entries::init_with(children, siblings)
     }
 
     fn children(&self) -> Option<Rc<Vec<File>>> {
@@ -180,27 +162,13 @@ impl Contents {
         self.siblings.clone()
     }
 
-    fn directory(&self) -> Option<Rc<PathBuf>> {
-        self.directory.clone()
+    async fn refresh(&self, dir: &PathBuf, filter: Filter) -> Self {
+        let children = crate::app::tasks::children(dir, filter).await;
+        let siblings = crate::app::tasks::siblings(dir, filter).await;
+        Entries::init_with(children, siblings)
+    }
+
+    fn new() -> Self {
+        Self { children: None, siblings: None }
     }
 }
-// use web_time::{Duration, Instant};
-// use std::{future::Future, task::{Poll, Context}};
-
-// pub async fn sleep(directory: Rc<PathBuf> , duration: Duration) -> Option<Rc<PathBuf>> {
-//     struct SleepHandle {
-//         directory: Rc<PathBuf>,
-//         timeout: Instant,
-//     }
-
-//     impl Future for SleepHandle {
-//         type Output = Option<Rc<PathBuf>>;
-//         fn poll(self: std::pin::Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-
-//         }
-//     }
-
-//     let timeout = Instant::now().checked_add(duration).unwrap();
-
-//     SleepHandle { directory, timeout }.await
-// }

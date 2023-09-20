@@ -208,3 +208,34 @@ pub async fn read_search_stream() -> Option<SearchMsg> {
     let res = invoke("read_search_stream", arg).await;
     from_value(res).unwrap()
 }
+
+pub use spawner::SpawnHandle;
+
+mod spawner {
+    use std::{future::Future, pin::Pin, task::{Poll, Context}};
+    pub struct SpawnHandle<F> {
+        future: Option<Pin<Box<F>>>,
+    }
+
+    impl<F> SpawnHandle<F> {
+        pub fn cancel(&mut self) {
+            self.future.take();
+        }
+
+        pub fn new(value: F) -> Self {
+            let future = Some(Box::pin(value));
+            Self { future }
+        }
+    }
+
+    impl<F: Future<Output = ()>> Future for SpawnHandle<F> {
+        type Output = ();
+        fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+            if let Some(pin) = self.future.as_mut() {
+                pin.as_mut().poll(cx)
+            } else {
+                Poll::Ready(())
+            }
+        }
+    }
+}
