@@ -1,10 +1,16 @@
+use std::{cell::RefCell, rc::Rc, path::PathBuf};
+
 use wasm_bindgen::prelude::*;
 use yew::prelude::*;
 
 #[wasm_bindgen]
 extern "C" {
+    #[wasm_bindgen(js_namespace = console)]
+    fn log(s: &str);
+
     #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "tauri"])]
     async fn invoke(cmd: &str, args: JsValue) -> JsValue;
+
 }
 
 mod components;
@@ -28,6 +34,7 @@ pub use view::*;
 
 #[function_component]
 pub fn App() -> Html {
+    let tabs = use_state(|| Rc::new(RefCell::new(TabEntries::new())));
     let application_ctx = use_state_eq(|| {
         let sizes = {
             let window = web_sys::window().unwrap();
@@ -71,10 +78,109 @@ pub fn App() -> Html {
         }
     };
 
+    let removetab = {
+        let tabs = tabs.clone();
+        move |idx| {
+            tabs.borrow_mut().remove(idx);
+            tabs.set(Rc::clone(&*tabs))
+        }
+    };
+
+    let changetab = {
+        let tabs = tabs.clone();
+        move |idx| {
+            tabs.borrow_mut().change_tab(idx);
+            tabs.set(Rc::clone(&*tabs))
+        }
+    };
+
+    let newtab = {
+        let tabs = tabs.clone();
+        move |()| {
+            tabs.borrow_mut().new_tab();
+            tabs.set(Rc::clone(&*tabs))
+        }
+    };
+
+    log(&format!("{}", tabs.borrow().current_tab().as_key()));
+
+    let tab = tabs.borrow().current_tab();
+    let key = tab.as_key();
+    let data = tab.application_data();
+
     html! {
         <ContextProvider<ApplicationContext> context = { *application_ctx }>
-            <ContentView {updatesettings} {updatetheme} />
+            <TitleBar {changetab} {newtab} {removetab} tabs = {(*tabs).clone()}/>
+            <ContentView {updatesettings} {updatetheme} {key} {data} />
         </ContextProvider<ApplicationContext>>
+    }
+}
+
+type ID = Rc<String>;
+const UNIQUE_LEN: usize = 10;
+
+#[derive(Clone)]
+pub struct Tab {
+    pub id: ID,
+    pub data: ApplicationData,
+}
+
+impl PartialEq for Tab {
+    fn eq(&self, other: &Self) -> bool {
+        &self.id == &other.id
+    }
+}
+
+impl Tab {
+    pub fn next() -> Self {
+        let id = Rc::new(crate::app::data::generate_string(UNIQUE_LEN));
+        let data = ApplicationData::new();
+        Self { id, data }
+    }
+
+    pub fn as_key(&self) -> String {
+        (*self.id).clone()
+    }
+
+    pub fn application_data(&self) -> ApplicationData {
+        self.data.clone()
+    }
+}
+
+#[derive(PartialEq)]
+pub struct TabEntries {
+    pub tabs: Vec<Tab>,
+    pub current: usize,
+}
+
+impl TabEntries {
+    fn new() -> Self {
+        let tabs = vec![Tab::next()];
+        let current = 0;
+        Self { tabs, current }
+    }
+
+    fn remove(&mut self, idx: usize) {
+        assert!(idx < self.tabs.len() && self.tabs.len() > 1);
+        if self.current >= idx {
+            self.tabs.remove(idx);
+            self.current -= 1;
+        } else {
+            self.tabs.remove(idx);
+        }
+    }
+
+    fn new_tab(&mut self) {
+        self.tabs.push(Tab::next());
+        self.current = self.tabs.len() - 1;
+    }
+
+    fn change_tab(&mut self, idx: usize) {
+        self.current = idx;
+    }
+
+    fn current_tab(&self) -> Tab {
+        self.tabs[self.current].clone()
     }
 }
 

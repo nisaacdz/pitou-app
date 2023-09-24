@@ -1,15 +1,19 @@
+use std::{cell::RefCell, rc::Rc};
+
 use yew::prelude::*;
 
-use crate::app::{ApplicationContext, SearchPage};
+use crate::app::{ApplicationContext, ApplicationData, SearchPage};
 
 use super::{
-    cview::*, AppView, BottomPane, HomeView, Pane, Settings, SettingsView, Theme, ToolBar,
+    cview::*, AppMenu, BottomPane, HomeView, Pane, Settings, SettingsView, TabEntries, Theme,
+    ToolBar, Tab,
 };
 
 #[derive(PartialEq, Properties)]
 pub struct ContentViewProp {
     pub updatesettings: Callback<Settings>,
     pub updatetheme: Callback<Theme>,
+    pub data: ApplicationData,
 }
 
 #[function_component]
@@ -19,18 +23,17 @@ pub fn ContentView(prop: &ContentViewProp) -> Html {
         sizes,
         settings,
     } = use_context().unwrap();
-    let force_update = use_force_update();
 
-    let updateui = { move |_| force_update.force_update() };
+    let updateui = { move |_| {} };
 
     let updatetheme = prop.updatetheme.clone();
     let updatesettings = prop.updatesettings.clone();
 
     let updateview = {
         let updatesettings = prop.updatesettings.clone();
-        move |newview| {
-            let mut settings = settings;
-            settings.view = newview;
+        let data = prop.data.clone();
+        move |newmenu| {
+            data.update_app_menu(newmenu);
             updatesettings.emit(settings)
         }
     };
@@ -59,8 +62,8 @@ pub fn ContentView(prop: &ContentViewProp) -> Html {
     gap: 0;
     "};
 
-    match settings.view() {
-        AppView::Explorer => html! {
+    let entries = match prop.data.active_menu() {
+        AppMenu::Explorer => html! {
             <div {style} >
                 <ToolBar {updateui}/>
                 <div style = {middle_style}>
@@ -70,7 +73,7 @@ pub fn ContentView(prop: &ContentViewProp) -> Html {
                 <BottomPane/>
             </div>
         },
-        AppView::Home => html! {
+        AppMenu::Home => html! {
             <div {style} >
                 <ToolBar {updateui}/>
                 <div style = {middle_style}>
@@ -80,7 +83,7 @@ pub fn ContentView(prop: &ContentViewProp) -> Html {
                 <BottomPane/>
             </div>
         },
-        AppView::Settings => html! {
+        AppMenu::Settings => html! {
             <div {style} >
                 <ToolBar {updateui}/>
                 <div style = {middle_style}>
@@ -90,7 +93,7 @@ pub fn ContentView(prop: &ContentViewProp) -> Html {
                 <BottomPane/>
             </div>
         },
-        AppView::Search => html! {
+        AppMenu::Search => html! {
             <div {style} >
                 <ToolBar {updateui}/>
                 <div style = {middle_style}>
@@ -101,5 +104,124 @@ pub fn ContentView(prop: &ContentViewProp) -> Html {
             </div>
         },
         _ => html! { <h1>{"Unimplemented"}</h1> },
+    };
+
+    html! {
+        <ContextProvider<ApplicationData> context = { prop.data.clone() }>
+            { entries }
+        </ContextProvider<ApplicationData>>
+    }
+}
+
+#[derive(PartialEq, Properties)]
+pub struct TitleBarProps {
+    pub tabs: Rc<RefCell<TabEntries>>,
+    pub newtab: Callback<()>,
+    pub changetab: Callback<usize>,
+    pub removetab: Callback<usize>,
+}
+
+#[function_component]
+pub fn TitleBar(prop: &TitleBarProps) -> Html {
+    let ApplicationContext { theme, sizes: _, settings: _} = use_context().unwrap();
+
+    let background_color = theme.background2();
+
+    let style = format! {"
+    background-color: {background_color};
+    "};
+
+    let tab_entries = {
+        let borrow = prop.tabs.borrow();
+        borrow.tabs.iter().enumerate().map(|(idx, tab)| {
+            let changetab = prop.changetab.clone();
+            let removetab = prop.removetab.clone();
+            let tab = tab.clone();
+            let isactive = tab == borrow.current_tab();
+            let open = move |()| changetab.emit(idx);
+            let close = move |()| removetab.emit(idx);
+            html! { <TitleBarTab {close} {open} {isactive} {tab}/> }
+        }).chain(Some(html! { <TitleBarTabAdder newtab = {prop.newtab.clone()} /> })).collect::<Html>()
+    };
+    
+    html! {
+        <div class = "title-bar" {style}>
+            <div class = "logo"></div>
+            <div class = "tabs">
+                { tab_entries }
+            </div>
+            <div class = "ctrl">
+                <button class = "ctrl-button mini"></button>
+                <button class = "ctrl-button maxi"></button>
+                <button class = "ctrl-button close"></button>
+            </div>
+        </div>
+    }
+}
+
+#[derive(PartialEq, Properties)]
+struct TitleBarTabAdderProps {
+    newtab: Callback<()>,
+}
+
+#[function_component]
+fn TitleBarTabAdder(prop: &TitleBarTabAdderProps) -> Html {
+    let onclick = {
+        let newtab = prop.newtab.clone();
+        move |_| newtab.emit(())
+    };
+
+    html! {
+        <div class = "title-bar-add-tab">
+            <button class = "title-bar-add-tab-btn" {onclick}>
+            </button>
+        </div>
+    }
+}
+
+#[derive(Properties, PartialEq)]
+struct TitleBarTabProps {
+    tab: Tab,
+    isactive: bool,
+    close: Callback<()>,
+    open: Callback<()>,
+}
+
+#[function_component]
+fn TitleBarTab(prop: &TitleBarTabProps) -> Html {
+    let ApplicationContext { theme, settings: _, sizes: _} = use_context().unwrap();
+
+    let dir = prop.tab.data.directory();
+
+    let name = dir.as_ref().map(|dir| backend::File::name_of(&**dir)).unwrap_or_default();
+    
+    let border = if !prop.isactive { format! {"border: 1px solid {};", theme.spare()} } else { "".into() };
+    let background_color = if prop.isactive { theme.background1() } else { theme.background2() };
+
+    let style = format! {"
+    {border}
+    background-color: {background_color};
+    "};
+
+    let class = if prop.isactive { "tab-item active" } else { "tab-item" };
+
+    let onclick = {
+        let open = prop.open.clone();
+        move |_| open.emit(())
+    };
+
+    let onclose = {
+        let close = prop.close.clone();
+        move |e: MouseEvent| {
+            e.stop_propagation();    
+            close.emit(())
+        }
+    };
+
+    html! {
+        <div {class} {onclick} {style}>
+            <span>{ name }</span>
+            <button class = "title-bar-tab-close" onclick = {onclose}></button>
+        </div>
     }
 }

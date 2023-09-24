@@ -1,142 +1,106 @@
-mod selections;
-use backend::{File, SearchOptions};
-pub use selections::*;
+// mod selections;
+// use backend::{File, SearchOptions};
+// pub use selections::*;
 
-use std::{path::PathBuf, rc::Rc};
+// use std::{path::PathBuf, rc::Rc};
 
-static mut DIRECTORY: Option<Rc<PathBuf>> = None;
-static mut SEARCH_RESULTS: Option<Rc<Vec<File>>> = None;
-static mut SEARCH_OPTIONS: Option<(Rc<String>, SearchOptions)> = None;
+// static mut DIRECTORY: Option<Rc<PathBuf>> = None;
+// static mut SEARCH_RESULTS: Option<Rc<Vec<File>>> = None;
+// static mut SEARCH_OPTIONS: Option<(Rc<String>, SearchOptions)> = None;
 
-pub fn update_search_results(results: Rc<Vec<File>>) {
-    unsafe {
-        SEARCH_RESULTS = Some(results);
-    }
-}
+// pub fn update_search_results(results: Rc<Vec<File>>) {
+//     unsafe {
+//         SEARCH_RESULTS = Some(results);
+//     }
+// }
 
-pub fn update_search_options(options: SearchOptions, input: Rc<String>) {
-    unsafe { SEARCH_OPTIONS = Some((input, options)) }
-}
+// pub fn update_search_options(options: SearchOptions, input: Rc<String>) {
+//     unsafe { SEARCH_OPTIONS = Some((input, options)) }
+// }
 
-pub fn search_options() -> Option<(Rc<String>, SearchOptions)> {
-    unsafe { SEARCH_OPTIONS.clone() }
-}
+// pub fn search_options() -> Option<(Rc<String>, SearchOptions)> {
+//     unsafe { SEARCH_OPTIONS.clone() }
+// }
 
-pub fn search_results() -> Option<Rc<Vec<File>>> {
-    unsafe { SEARCH_RESULTS.clone() }
-}
+// pub fn search_results() -> Option<Rc<Vec<File>>> {
+//     unsafe { SEARCH_RESULTS.clone() }
+// }
 
-pub fn update_directory(newval: Option<Rc<PathBuf>>) {
-    unsafe { DIRECTORY = newval }
-}
+// pub fn update_directory(newval: Option<Rc<PathBuf>>) {
+//     unsafe { DIRECTORY = newval }
+// }
 
-pub fn directory() -> Option<Rc<PathBuf>> {
-    unsafe { DIRECTORY.clone() }
-}
+// pub fn directory() -> Option<Rc<PathBuf>> {
+//     unsafe { DIRECTORY.clone() }
+// }
 
-#[allow(unused)]
-const UNIQUE_LEN: usize = 5;
+// #[allow(unused)]
+// const UNIQUE_LEN: usize = 5;
 
-/// returns a new unique string that can be usefull for representing keys of components
-#[allow(unused)]
-pub fn unique() -> String {
-    generate_string(UNIQUE_LEN)
-}
+// /// returns a new unique string that can be usefull for representing keys of components
+// #[allow(unused)]
+// pub fn unique() -> String {
+//     generate_string(UNIQUE_LEN)
+// }
+
+pub use mtx::SharedBorrow;
+pub use rand::generate_string;
 
 mod rand {
-    use std::ops::{Add, Range, Rem, Sub};
+    use std::ops::Range;
 
-    pub trait FromI32 {
-        fn from_u64(val: i32) -> Self;
-    }
+    static mut RAND: i32 = 1;
 
-    pub trait Num:
-        Sized
-        + FromI32
-        + std::fmt::Debug
-        + Default
-        + PartialEq
-        + Copy
-        + Add<Output = Self>
-        + Sub<Output = Self>
-        + Rem<Output = Self>
-    {
-    }
-
-    macro_rules! impl_num_for {
-        ($($t:ty),*) => {
-            $(impl Num for $t {})*
-        };
-    }
-
-    macro_rules! impl_from_i32 {
-        ($($val:ty),*) => {
-            $(impl FromI32 for $val {
-                fn from_u64(arg: i32) -> $val {
-                    arg as $val
-                }
-            })*
-        };
-    }
-
-    impl_from_i32!(i32, u32, u8);
-    impl_num_for!(i32, u32, u8);
-
-    static mut RAND: i32 = i32::MAX;
     pub fn get_random() -> i32 {
         let cur = unsafe { RAND };
-
-        let res = cur
-            .overflowing_mul(i32::MAX)
-            .0
-            .overflowing_add(i32::MAX)
-            .0
+        let mut res = cur
             .overflowing_mul(cur)
             .0
             .overflowing_add(cur)
+            .0
+            .overflowing_mul(923293493)
+            .0
+            .overflowing_add(783923092)
             .0;
-        unsafe {
-            RAND = res;
+        if res == cur {
+            res = res.overflowing_add(39395789).0
         }
 
+        unsafe { RAND = res }
         res
     }
 
-    pub fn gen_range<T: Num>(rng: Range<T>) -> T {
+    pub fn gen_range(rng: Range<i32>) -> i32 {
         let len = rng.end - rng.start;
-        assert_ne!(len, T::default());
-        rng.start + T::from_u64(get_random()) % len
+        assert_ne!(len, 0);
+        rng.start + (get_random() % len)
     }
 
     pub fn random() -> bool {
         get_random() > 0
     }
-}
 
-/// generates a new string with the specified length
-pub fn generate_string(len: usize) -> String {
-    let mut res = String::with_capacity(len);
-    for _ in 0..len {
-        let use_nums = rand::random();
-        let next = match use_nums {
-            true => rand::gen_range(0..10) + 48u8,
-            false => {
-                let rdval = rand::gen_range(0..26);
-
-                let use_caps = rand::random();
-
-                rdval + if use_caps { 65 } else { 97 }
-            }
-        };
-
-        res.push(next as char)
+    /// generates a new string with the specified length
+    pub fn generate_string(len: usize) -> String {
+        let mut res = String::with_capacity(len);
+        for _ in 0..len {
+            let use_nums = random();
+            let next = match use_nums {
+                true => gen_range(0..10) + 48,
+                false => {
+                    let rdval = gen_range(0..26);
+                    let use_caps = random();
+                    rdval + if use_caps { 65 } else { 97 }
+                }
+            };
+            res.push(next as u8 as char)
+        }
+        // crate::app::log(&format!("generated string = {}", &res));
+        res
     }
-    res
 }
 
-pub use mutex::SharedBorrow;
-
-mod mutex {
+mod mtx {
     use std::{cell::UnsafeCell, rc::Rc};
 
     #[derive(Clone)]

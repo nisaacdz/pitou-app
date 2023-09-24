@@ -1,13 +1,13 @@
 use yew::prelude::*;
 
 use crate::{
-    app::{AppView, ApplicationContext},
+    app::{ApplicationData, ApplicationContext, AppMenu},
     background_color,
 };
 
 #[derive(PartialEq, Properties)]
 pub struct LeftPaneProps {
-    pub updateview: Callback<AppView>,
+    pub updateview: Callback<AppMenu>,
 }
 
 #[function_component]
@@ -86,17 +86,18 @@ fn ExploreButton(prop: &ButtonProp) -> Html {
     let ApplicationContext {
         theme,
         sizes,
-        settings,
+        settings: _,
     } = use_context().unwrap();
+    let cdata = use_context::<ApplicationData>().unwrap();
+
+    let background_color = background_color!(
+        matches!(cdata.active_menu(), AppMenu::Explorer),
+        theme.background2()
+    );
 
     let mut outer_size = sizes.menu_item();
     outer_size.width -= 2;
     let icon_style = sizes.menu_item_icon();
-
-    let background_color = background_color!(
-        matches!(settings.view, AppView::Explorer),
-        theme.background2()
-    );
 
     let style = format! {"
     {outer_size}
@@ -114,7 +115,7 @@ fn ExploreButton(prop: &ButtonProp) -> Html {
 
     let onclick = {
         let updateview = prop.updateview.clone();
-        move |_| updateview.emit(AppView::Explorer)
+        move |_| updateview.emit(AppMenu::Explorer)
     };
 
     html! {
@@ -129,15 +130,18 @@ fn HomeButton(prop: &ButtonProp) -> Html {
     let ApplicationContext {
         theme,
         sizes,
-        settings,
+        settings: _,
     } = use_context().unwrap();
+    let cdata = use_context::<ApplicationData>().unwrap();
 
-    let background_color =
-        background_color!(matches!(settings.view, AppView::Home), theme.background2());
+    let background_color = background_color!(
+        matches!(cdata.active_menu(), AppMenu::Home),
+        theme.background2()
+    );
 
     let onclick = {
         let updateview = prop.updateview.clone();
-        move |_| updateview.emit(AppView::Home)
+        move |_| updateview.emit(AppMenu::Home)
     };
 
     let mut outer_size = sizes.menu_item();
@@ -171,11 +175,12 @@ fn SettingsButton(prop: &ButtonProp) -> Html {
     let ApplicationContext {
         theme,
         sizes,
-        settings,
+        settings: _,
     } = use_context().unwrap();
+    let cdata = use_context::<ApplicationData>().unwrap();
 
     let background_color = background_color!(
-        matches!(settings.view, AppView::Settings),
+        matches!(cdata.active_menu(), AppMenu::Settings),
         theme.background2()
     );
 
@@ -185,7 +190,7 @@ fn SettingsButton(prop: &ButtonProp) -> Html {
 
     let onclick = {
         let updateview = prop.updateview.clone();
-        move |_| updateview.emit(AppView::Settings)
+        move |_| updateview.emit(AppMenu::Settings)
     };
 
     let style = format! {"
@@ -214,11 +219,12 @@ fn HistoryButton() -> Html {
     let ApplicationContext {
         theme,
         sizes,
-        settings,
+        settings: _,
     } = use_context().unwrap();
+    let cdata = use_context::<ApplicationData>().unwrap();
 
     let background_color = background_color!(
-        matches!(settings.view, AppView::History),
+        matches!(cdata.active_menu(), AppMenu::History),
         theme.background2()
     );
 
@@ -252,11 +258,12 @@ fn BookmarksButton() -> Html {
     let ApplicationContext {
         theme,
         sizes,
-        settings,
+        settings: _,
     } = use_context().unwrap();
+    let cdata = use_context::<ApplicationData>().unwrap();
 
     let background_color = background_color!(
-        matches!(settings.view, AppView::Bookmarks),
+        matches!(cdata.active_menu(), AppMenu::Bookmarks),
         theme.background2()
     );
 
@@ -290,11 +297,14 @@ fn CloudButton() -> Html {
     let ApplicationContext {
         theme,
         sizes,
-        settings,
+        settings: _,
     } = use_context().unwrap();
+    let cdata = use_context::<ApplicationData>().unwrap();
 
-    let background_color =
-        background_color!(matches!(settings.view, AppView::Cloud), theme.background2());
+    let background_color = background_color!(
+        matches!(cdata.active_menu(), AppMenu::Cloud),
+        theme.background2()
+    );
 
     let mut outer_size = sizes.menu_item();
     outer_size.width -= 2;
@@ -326,11 +336,12 @@ fn LockedButton() -> Html {
     let ApplicationContext {
         theme,
         sizes,
-        settings,
+        settings: _,
     } = use_context().unwrap();
+    let cdata = use_context::<ApplicationData>().unwrap();
 
     let background_color = background_color!(
-        matches!(settings.view, AppView::Locked),
+        matches!(cdata.active_menu(), AppMenu::Locked),
         theme.background2()
     );
 
@@ -364,11 +375,12 @@ fn SearchButton(prop: &ButtonProp) -> Html {
     let ApplicationContext {
         theme,
         sizes,
-        settings,
+        settings: _,
     } = use_context().unwrap();
+    let cdata = use_context::<ApplicationData>().unwrap();
 
     let background_color = background_color!(
-        matches!(settings.view, AppView::Search),
+        matches!(cdata.active_menu(), AppMenu::Search),
         theme.background2()
     );
 
@@ -393,7 +405,7 @@ fn SearchButton(prop: &ButtonProp) -> Html {
     let onclick = {
         let updateview = prop.updateview.clone();
 
-        move |_| updateview.emit(AppView::Search)
+        move |_| updateview.emit(AppMenu::Search)
     };
 
     html! {
@@ -405,5 +417,5 @@ fn SearchButton(prop: &ButtonProp) -> Html {
 
 #[derive(PartialEq, Properties)]
 struct ButtonProp {
-    updateview: Callback<AppView>,
+    updateview: Callback<AppMenu>,
 }

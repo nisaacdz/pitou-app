@@ -21,6 +21,82 @@ body {
   margin: 0% 0% 0% 0%;
 }
 
+.title-bar {
+  position: fixed;
+  height: 25px;
+  width: 100%;
+  display: flex;
+  z-index: 999;
+}
+
+.logo {
+  width: 25px;
+  height: 25px;
+  margin-right: 10px;
+  background-color: red;
+}
+
+.tabs {
+  display: flex;
+  width: auto;
+  height: 25px;
+}
+
+.tab-item {
+  position: relative;
+  box-sizing: border-box;
+  width: 120px;
+  height: 100%;
+  padding-right: 5px;
+  display: flex;
+  align-items: center;
+}
+
+.tab-item .active {
+  border-bottom: 0;
+  background-color: red;
+}
+
+.title-bar-tab-close {
+  right: 0px;
+  width: 20px;
+  height: 15px;
+}
+
+.title-bar-add-tab {
+  width: 30px;
+  box-sizing: border-box;
+  height: 100%;
+  border: 2px solid red;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.title-bar-add-tab-btn {
+  width: 20px;
+  height: 15px;
+}
+
+.ctrl {
+  position: absolute;
+  width: 105px;
+  right: 0px;
+}
+
+.ctrl-button {
+  box-sizing: border-box;
+  width: 35px;
+  height: 25px;
+  border: 0;
+}
+
+.ctrl-button
+
+.ctrl-button:hover {
+  filter: brightness(70%);
+}
+
 .card {
   transition: transform 0.3s, filter 0.3s;
   cursor: pointer;

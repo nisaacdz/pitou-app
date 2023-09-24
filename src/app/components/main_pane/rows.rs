@@ -1,5 +1,5 @@
 use crate::{
-    app::{AppView, ApplicationContext, DirIcon, FileIcon, SymLinkIcon},
+    app::{ApplicationContext, AppMenu, ApplicationData, DirIcon, FileIcon, SymLinkIcon},
     background_color,
 };
 
@@ -162,6 +162,8 @@ fn FileName(prop: &FileNameProps) -> Html {
         settings,
     } = use_context().unwrap();
 
+    let app_data = use_context::<ApplicationData>().unwrap();
+
     let width = sizes.row_namefield();
 
     let foreground = theme.foreground1();
@@ -177,15 +179,15 @@ fn FileName(prop: &FileNameProps) -> Html {
     right: 2%;
     height: 100%;"};
 
-    let value = match settings.view {
-        AppView::Search => prop.file.path().display().to_string(),
+    let name = match app_data.active_menu() {
+        AppMenu::Search => prop.file.path().display().to_string(),
         _ => prop.file.name().to_owned(),
     };
 
     html! {
         <div {style}>
             <div class = "filenamewrap" style = {inner_style}>
-                <span class = "filename"> { value } </span>
+                <span class = "filename"> { name } </span>
             </div>
         </div>
     }

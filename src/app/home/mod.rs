@@ -8,11 +8,11 @@ mod locals;
 
 use locals::{LocalCmp, LocalFolderKind};
 
-use super::AppView;
+use super::{AppMenu, ApplicationData};
 
 #[derive(PartialEq, Properties)]
 pub struct HomeViewProps {
-    pub updateview: Callback<AppView>,
+    pub updateview: Callback<AppMenu>,
 }
 
 #[function_component]
@@ -48,7 +48,7 @@ pub fn HomeView(prop: &HomeViewProps) -> Html {
 
 #[derive(PartialEq, Properties)]
 struct LocalFoldersProp {
-    updateview: Callback<AppView>,
+    updateview: Callback<AppMenu>,
 }
 
 #[function_component]
@@ -135,7 +135,7 @@ fn LocalFolders(prop: &LocalFoldersProp) -> Html {
 
 #[derive(PartialEq, Properties)]
 struct DrivesPaneProp {
-    updateview: Callback<AppView>,
+    updateview: Callback<AppMenu>,
 }
 
 #[function_component]
@@ -198,7 +198,7 @@ fn DrivesPane(prop: &DrivesPaneProp) -> Html {
 #[derive(PartialEq, Properties)]
 struct DriveProp {
     drive: Drive,
-    updateview: Callback<AppView>,
+    updateview: Callback<AppMenu>,
 }
 
 #[function_component]
@@ -208,6 +208,7 @@ fn DriveCmp(prop: &DriveProp) -> Html {
         sizes,
         settings: _,
     } = use_context().unwrap();
+    let cdata = use_context::<ApplicationData>().unwrap();
     let totalsize = sizes.diskcmp();
 
     let background = theme.background1();
@@ -250,9 +251,10 @@ fn DriveCmp(prop: &DriveProp) -> Html {
     let onclick = {
         let updateview = prop.updateview.clone();
         let dir = Rc::new(prop.drive.mount_point().clone());
+        let cdata = cdata.clone();
         move |_| {
-            crate::app::data::update_directory(Some(dir.clone()));
-            updateview.emit(AppView::Explorer)
+            cdata.update_directory(dir.clone());
+            updateview.emit(AppMenu::Explorer)
         }
     };
 

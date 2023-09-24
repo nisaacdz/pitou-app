@@ -1,8 +1,11 @@
 mod side_pane;
 
-use crate::app::{AncestorsTabs, ApplicationContext, MainPane, tasks::SpawnHandle, data::SharedBorrow};
+use crate::app::{
+    data::SharedBorrow, tasks::SpawnHandle, AncestorsTabs, ApplicationContext, ApplicationData,
+    MainPane,
+};
 use wasm_bindgen_futures::spawn_local;
-use yew::{prelude::*, platform::time::sleep};
+use yew::{platform::time::sleep, prelude::*};
 
 use backend::{File, Filter};
 use std::path::PathBuf;
@@ -19,7 +22,9 @@ pub fn Pane() -> Html {
         settings,
     } = use_context().unwrap();
 
-    let directory = use_state(|| crate::app::data::directory());
+    let cdata = use_context::<ApplicationData>().unwrap();
+
+    let directory = use_state(|| cdata.directory());
 
     let entries = use_state(|| Entries::new());
 
@@ -29,6 +34,7 @@ pub fn Pane() -> Html {
         let entries = entries.clone();
         let directory = directory.clone();
         let aborthandle = aborthandle.clone();
+        let cdata = cdata.clone();
 
         use_effect(move || {
             let newhandle = SpawnHandle::new(async move {
@@ -38,13 +44,13 @@ pub fn Pane() -> Html {
                         entries.set(newentries);
                     } else {
                         sleep(settings.refresh_wait()).await;
-                        let newentries = entries.refresh( &**cur, settings.filter).await;
+                        let newentries = entries.refresh(&**cur, settings.filter).await;
                         entries.set(newentries)
                     }
                 } else {
-                    let newdirectory = Some(Rc::new(crate::app::tasks::default_directory().await));
-                    crate::app::data::update_directory(newdirectory.clone());
-                    directory.set(newdirectory);
+                    let newdirectory = Rc::new(crate::app::tasks::default_directory().await);
+                    cdata.update_directory(newdirectory.clone());
+                    directory.set(Some(newdirectory));
                 }
             });
 
@@ -63,10 +69,11 @@ pub fn Pane() -> Html {
     let updatedir_with = Callback::from({
         let entries = entries.clone();
         let directory = directory.clone();
+        let cdata = cdata.clone();
         move |dir: PathBuf| {
-            let newdir = Some(Rc::new(dir));
-            crate::app::data::update_directory(newdir.clone());
-            directory.set(newdir);
+            let newdir = Rc::new(dir);
+            cdata.update_directory(newdir.clone());
+            directory.set(Some(newdir));
             entries.set(Entries::new())
         }
     });
@@ -74,10 +81,11 @@ pub fn Pane() -> Html {
     let updatedirectory = Callback::from({
         let directory = directory.clone();
         let entries = entries.clone();
+        let cdata = cdata.clone();
         move |file: File| {
-            let newdir = Some(Rc::new(file.path().clone()));
-            crate::app::data::update_directory(newdir.clone());
-            directory.set(newdir);
+            let newdir = Rc::new(file.path().clone());
+            cdata.update_directory(newdir.clone());
+            directory.set(Some(newdir));
             entries.set(Entries::new())
         }
     });
@@ -98,8 +106,6 @@ pub fn Pane() -> Html {
     {split_pane_size}
     "};
 
-    gloo::console::log!(format! {"{:#?}", &*entries});
-
     html! {
         <div {style}>
             <AncestorsTabs updatedirectory = { updatedir_with.clone() } folder = {(*directory).clone()}/>
@@ -110,7 +116,6 @@ pub fn Pane() -> Html {
         </div>
     }
 }
-
 
 #[derive(Clone)]
 struct Entries {
@@ -169,6 +174,9 @@ impl Entries {
     }
 
     fn new() -> Self {
-        Self { children: None, siblings: None }
+        Self {
+            children: None,
+            siblings: None,
+        }
     }
 }

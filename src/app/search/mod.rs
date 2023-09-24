@@ -1,23 +1,28 @@
-use std::{path::PathBuf, rc::Rc};
+use std::{cell::RefCell, path::PathBuf, rc::Rc, time::Duration};
 
 use backend::{File, SearchMsg, SearchOptions};
 use wasm_bindgen_futures::spawn_local;
-use yew::prelude::*;
+use yew::{platform::time::sleep, prelude::*};
 
-use crate::app::{AncestorsTabs, ApplicationContext, MainPane, AppView};
+use crate::app::{
+    data::SharedBorrow, tasks::SpawnHandle, AncestorsTabs, AppMenu, ApplicationContext, MainPane,
+};
 
 mod options;
 
 use options::SearchOptionsCmp;
 
+use super::ApplicationData;
+
 #[derive(PartialEq, Properties)]
 pub struct SearchPageProps {
-    pub updateview: Callback<AppView>,
+    pub updateview: Callback<AppMenu>,
 }
 
 #[function_component]
 pub fn SearchPage(prop: &SearchPageProps) -> Html {
-    let dir = use_state(|| crate::app::data::directory().map(|p| p.clone()));
+    let cdata = use_context::<ApplicationData>().unwrap();
+    let dir = use_state(|| cdata.directory());
 
     {
         let dir: UseStateHandle<Option<Rc<PathBuf>>> = dir.clone();
@@ -38,10 +43,11 @@ pub fn SearchPage(prop: &SearchPageProps) -> Html {
 
     let updatedirectory = {
         let updateview = prop.updateview.clone();
+        let cdata = cdata.clone();
         move |file: File| {
             let path = Rc::new(file.path().clone());
-            crate::app::data::update_directory(Some(path));
-            updateview.emit(AppView::Explorer)
+            cdata.update_directory(path);
+            updateview.emit(AppMenu::Explorer)
         }
     };
 
@@ -113,14 +119,24 @@ impl Default for SearchData {
 }
 
 struct SearchResult {
-    results: Rc<Vec<File>>,
+    results: Option<Rc<Vec<File>>>,
     state: SearchState,
+}
+
+impl SearchResult {
+    fn is_searching(&self) -> bool {
+        matches!(self.state, SearchState::Searching)
+    }
+
+    fn is_none(&self) -> bool {
+        self.results.is_none()
+    }
 }
 
 impl Default for SearchResult {
     fn default() -> Self {
         SearchResult {
-            results: Rc::new(Vec::new()),
+            results: None,
             state: SearchState::Idle,
         }
     }
@@ -139,91 +155,52 @@ pub fn SearchView(prop: &SearchViewProps) -> Html {
         sizes,
         settings: _,
     } = use_context().unwrap();
-    let results = use_state(|| {
-        if let Some(results) = crate::app::data::search_results() {
-            SearchResult {
-                results,
-                state: SearchState::Idle,
-            }
-        } else {
-            SearchResult::default()
-        }
+    let cdata = use_context::<ApplicationData>().unwrap();
+    let search_results = use_state(|| SearchResult {
+        results: cdata.search_results(),
+        state: SearchState::Idle,
     });
-    let search_data = use_state(|| None::<SearchData>);
+    let search_data = use_state(|| RefCell::new(None));
+    let aborthandle = use_state(|| SharedBorrow::new(None));
 
     {
-        let results = results.clone();
         let search_data = search_data.clone();
+        let aborthandle = aborthandle.clone();
+        let search_results = search_results.clone();
+        let cdata = cdata.clone();
+        let directory = prop.dir.clone();
 
-        use_effect_with_deps(
-            move |search_data| {
-                if let Some(search_data) = &**search_data {
-                    if (*search_data).input.len() != 0 {
-                        results.set(SearchResult {
-                            results: Rc::new(Vec::new()),
-                            state: SearchState::Searching,
-                        });
+        use_effect(move || {
+            let newhandle = SpawnHandle::new(async move {
+                if let Some(SearchData { input, options }) = search_data.borrow_mut().take() {
+                    let results = None;
+                    let state = SearchState::Searching;
+                    cdata.update_search_results(results.clone());
+                    if let Some(path) = directory {
+                        crate::app::tasks::restart_stream_search(&*input, path.as_ref(), options)
+                            .await;
+                    }
+                    search_results.set(SearchResult { results, state });
+                } else if search_results.is_searching() {
+                    if search_results.is_none() {
+                        match_search_stream(search_results, &cdata).await;
+                    } else {
+                        sleep(Duration::from_millis(100)).await;
+                        match_search_stream(search_results, &cdata).await;
                     }
                 }
-            },
-            search_data,
-        );
-    }
-    {
-        let results = results.clone();
-        use_effect_with_deps(
-            |results| {
-                let results = results.clone();
-                spawn_local(async move {
-                    match crate::app::tasks::read_search_stream().await {
-                        Some(msg) => match msg {
-                            SearchMsg::Searching(values) => {
-                                let values = if values.len() > 0 {
-                                    let mut clone = (*results.results).clone();
-                                    clone.extend(values);
-                                    Rc::new(clone)
-                                } else {
-                                    results.results.clone()
-                                };
+            });
 
-                                let state = SearchState::Searching;
-                                results.set(SearchResult {
-                                    results: values,
-                                    state,
-                                })
-                            }
-                            SearchMsg::Terminated(values) => {
-                                let values = if values.len() > 0 {
-                                    let mut clone = (*results.results).clone();
-                                    clone.extend(values);
-                                    Rc::new(clone)
-                                } else {
-                                    results.results.clone()
-                                };
-                                crate::app::data::update_search_results(values.clone());
-                                spawn_local(async move {
-                                    crate::app::tasks::terminate_search_stream().await;
-                                });
+            if let Some(mut oldhandle) = aborthandle.as_mut().replace(newhandle) {
+                oldhandle.cancel()
+            }
 
-                                let state = SearchState::Idle;
-                                results.set(SearchResult {
-                                    results: values,
-                                    state,
-                                })
-                            }
-                        },
-                        None => {
-                            let newresult = SearchResult {
-                                results: results.results.clone(),
-                                state: SearchState::Idle,
-                            };
-                            results.set(newresult);
-                        }
-                    }
-                });
-            },
-            results,
-        );
+            spawn_local(async move {
+                if let Some(handle) = aborthandle.as_mut() {
+                    handle.await;
+                }
+            });
+        });
     }
 
     let size = sizes.split_pane();
@@ -237,25 +214,81 @@ pub fn SearchView(prop: &SearchViewProps) -> Html {
 
     let onsubmit = {
         let search_data = search_data.clone();
-        let dir = prop.dir.clone();
         move |(input, options): (Rc<String>, SearchOptions)| {
-            let dir = dir.clone();
-            let search_data = search_data.clone();
-            spawn_local(async move {
-                if let Some(dir) = &dir {
-                    crate::app::tasks::restart_stream_search(&*input, &**dir, options).await;
-                    search_data.set(Some(SearchData { input, options }));
-                }
-            });
+            search_data.set(RefCell::new(Some(SearchData { input, options })));
         }
     };
 
-    let children = Some((*results).results.clone());
+    let children = (*search_results).results.clone();
 
     html! {
         <div {style}>
             <SearchOptionsCmp {onsubmit}/>
             <MainPane {children} updatedirectory = {prop.updatedirectory.clone()}/>
         </div>
+    }
+}
+
+async fn match_search_stream(
+    search_results: UseStateHandle<SearchResult>,
+    cdata: &ApplicationData,
+) {
+    match crate::app::tasks::read_search_stream().await {
+        Some(msg) => match msg {
+            SearchMsg::Searching(values) => {
+                let results = if values.len() > 0 {
+                    let mut clone = search_results
+                        .results
+                        .as_ref()
+                        .map(|v| (**v).clone())
+                        .unwrap_or(Vec::new());
+                    clone.extend(values);
+                    Some(Rc::new(clone))
+                } else {
+                    let res = search_results
+                        .results
+                        .as_ref()
+                        .map(|v| v.clone())
+                        .unwrap_or(Rc::new(Vec::new()));
+                    Some(res)
+                };
+
+                let state = SearchState::Searching;
+                search_results.set(SearchResult { results, state })
+            }
+            SearchMsg::Terminated(values) => {
+                let values = if values.len() > 0 {
+                    let mut clone = search_results
+                        .results
+                        .as_ref()
+                        .map(|v| (**v).clone())
+                        .unwrap_or(Vec::new());
+                    clone.extend(values);
+                    Some(Rc::new(clone))
+                } else {
+                    let res = search_results
+                        .results
+                        .as_ref()
+                        .map(|v| v.clone())
+                        .unwrap_or(Rc::new(Vec::new()));
+                    Some(res)
+                };
+                cdata.update_search_results(values.clone());
+                crate::app::tasks::terminate_search_stream().await;
+
+                let state = SearchState::Idle;
+                search_results.set(SearchResult {
+                    results: values,
+                    state,
+                })
+            }
+        },
+        None => {
+            let newresult = SearchResult {
+                results: search_results.results.clone(),
+                state: SearchState::Idle,
+            };
+            search_results.set(newresult);
+        }
     }
 }

@@ -99,7 +99,7 @@ pub fn SidePane(prop: &SidePaneProps) -> Html {
                     if let Some(file) = crate::app::tasks::read_link(symlink.path()).await {
                         let parent_dir =
                             PathBuf::from(file.path().parent().unwrap_or(std::path::Path::new("")));
-                        crate::app::data::persist(file.clone());
+                        // TODO crate::app::data::persist(file.clone());
                         updatedirectory.emit(parent_dir);
                     }
                 })

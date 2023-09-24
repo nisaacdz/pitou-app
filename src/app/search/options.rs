@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use yew::prelude::*;
 
-use crate::app::ApplicationContext;
+use crate::app::{ApplicationContext, ApplicationData};
 use backend::{KeyType, SearchArea, SearchOptions};
 use web_sys::{HtmlInputElement, HtmlSelectElement};
 
@@ -18,21 +18,17 @@ pub fn SearchOptionsCmp(prop: &SearchOptionsCmpProp) -> Html {
         sizes,
         settings: _,
     } = use_context().unwrap();
+
+    let cdata = use_context::<ApplicationData>().unwrap();
     let input = use_state(|| {
-        if let Some((input, _)) = crate::app::data::search_options() {
+        if let Some(input) = cdata.search_input() {
             input
         } else {
             Rc::new(String::new())
         }
     });
 
-    let options = use_state_eq(|| {
-        if let Some((_, options)) = crate::app::data::search_options() {
-            options
-        } else {
-            SearchOptions::new()
-        }
-    });
+    let options = use_state_eq(|| cdata.search_options());
 
     let background_color = theme.background2();
     let border_color = theme.spare();
@@ -83,10 +79,12 @@ pub fn SearchOptionsCmp(prop: &SearchOptionsCmpProp) -> Html {
         let options = options.clone();
         let onsubmit = prop.onsubmit.clone();
         let input = input.clone();
+        let cdata = cdata.clone();
         move |e: SubmitEvent| {
             e.prevent_default();
             let key = (*input).clone();
-            crate::app::data::update_search_options(*options, key.clone());
+            cdata.update_search_options(*options);
+            cdata.update_search_input(key.clone());
             onsubmit.emit((key, *options))
         }
     };

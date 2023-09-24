@@ -1,25 +1,19 @@
 mod dsc;
 mod rows;
 
-use crate::app::{ApplicationContext, LoadingDisplay};
+use crate::app::{ApplicationContext, ApplicationData, LoadingDisplay};
 use backend::{File, PitouType};
 use dsc::*;
 use rows::*;
 use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
 
-use std::{cell::RefCell, collections::HashSet, path::PathBuf, rc::Rc};
+use std::{path::PathBuf, rc::Rc};
 #[derive(PartialEq, Properties)]
 pub struct MainPaneProps {
     pub children: Option<Rc<Vec<File>>>,
     pub updatedirectory: Callback<File>,
 }
-
-// impl PartialEq for MainPaneProps {
-//     fn eq(&self, _other: &Self) -> bool {
-//         false
-//     }
-// }
 
 #[function_component]
 pub fn MainPane(prop: &MainPaneProps) -> Html {
@@ -29,23 +23,21 @@ pub fn MainPane(prop: &MainPaneProps) -> Html {
         settings: _,
     } = use_context().unwrap();
 
-    let selections: UseStateHandle<Rc<RefCell<HashSet<File>>>> = use_state(|| {
-        let vals = Rc::new(RefCell::new(HashSet::new()));
-        crate::app::data::init_selections(vals.clone());
-        vals
-    });
+    let cdata = use_context::<ApplicationData>().unwrap();
+
+    let selections = use_state(|| cdata.selected_files());
 
     {
         let selections = selections.clone();
         let children = prop.children.clone();
         use_effect_with_deps(
             move |_| {
-                let newselections = (&*selections).clone();
-                let mut borrow = newselections.borrow_mut();
-                borrow.clear();
-                borrow.extend(crate::app::data::get_persistent());
-                std::mem::drop(borrow);
-                selections.set(newselections);
+                let mut borrow = selections.borrow_mut();
+                if borrow.len() > 0 {
+                    borrow.clear();
+                    drop(borrow);
+                    selections.set((&*selections).clone())
+                }
             },
             children,
         );
@@ -109,7 +101,7 @@ pub fn MainPane(prop: &MainPaneProps) -> Html {
                                 if let Some(parent_file) =
                                     crate::app::tasks::retrieve(&parent_dir).await
                                 {
-                                    crate::app::data::persist(file.clone());
+                                    // TODO crate::app::data::persist(file.clone());
                                     updatedirectory.emit(parent_file);
                                 }
                             }
@@ -125,7 +117,6 @@ pub fn MainPane(prop: &MainPaneProps) -> Html {
         let children = prop.children.clone();
         move |_| {
             if let Some(children) = &children {
-                gloo::console::log!("toggle select all invoked");
                 let newselections = (&*selections).clone();
                 let mut borrow = newselections.borrow_mut();
                 if borrow.len() == children.len() {
@@ -204,7 +195,7 @@ pub fn MainPane(prop: &MainPaneProps) -> Html {
     let selected = prop
         .children
         .as_ref()
-        .map(|c| c.len() == selections.borrow().len())
+        .map(|c| c.len() <= selections.borrow().len())
         .unwrap_or(true);
 
     html! {

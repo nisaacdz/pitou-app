@@ -62,7 +62,6 @@ pub fn CheckBox(prop: &CheckBoxProps) -> Html {
     let onclick = {
         let ontoggle = prop.ontoggle.clone();
         move |_| {
-            gloo::console::log!("checkbox clicked");
             ontoggle.emit(());
         }
     };

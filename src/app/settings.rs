@@ -1,5 +1,5 @@
-use backend::Filter;
-use std::time::Duration;
+use backend::{File, Filter, SearchOptions};
+use std::{cell::RefCell, collections::HashSet, path::PathBuf, rc::Rc, time::Duration};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Theme {
@@ -75,6 +75,88 @@ pub struct ApplicationContext {
     pub(crate) theme: Theme,
     pub(crate) sizes: Sizes,
     pub(crate) settings: Settings,
+}
+struct Data {
+    active_menu: AppMenu,
+    opened_dir: Option<Rc<PathBuf>>,
+    selected_files: Rc<RefCell<HashSet<File>>>,
+    search_results: Option<Rc<Vec<File>>>,
+    search_input: Option<Rc<String>>,
+    search_options: SearchOptions,
+}
+
+#[derive(Clone)]
+pub struct ApplicationData {
+    // ApplicationData to be named SessionData
+    inner: Rc<RefCell<Data>>,
+}
+
+
+impl ApplicationData {
+    pub fn new() -> Self {
+        let inner = Data {
+            active_menu: AppMenu::Explorer,
+            opened_dir: None,
+            selected_files: Rc::new(RefCell::new(HashSet::new())),
+            search_results: Some(Rc::new(Vec::new())),
+            search_input: None,
+            search_options: SearchOptions::new(),
+        };
+
+        Self {
+            inner: Rc::new(RefCell::new(inner)),
+        }
+    }
+
+    pub fn update_search_results(&self, results: Option<Rc<Vec<File>>>) {
+        self.inner.borrow_mut().search_results = results;
+    }
+
+    pub fn update_app_menu(&self, newmenu: AppMenu) {
+        self.inner.borrow_mut().active_menu = newmenu;
+    }
+
+    pub fn active_menu(&self) -> AppMenu {
+        self.inner.borrow().active_menu
+    }
+
+    pub fn update_directory(&self, directory: Rc<PathBuf>) {
+        self.inner.borrow_mut().opened_dir = Some(directory);
+    }
+
+    pub fn update_search_options(&self, options: SearchOptions) {
+        self.inner.borrow_mut().search_options = options;
+    }
+
+    pub fn update_search_input(&self, input: Rc<String>) {
+        self.inner.borrow_mut().search_input = Some(input);
+    }
+
+    pub fn search_options(&self) -> SearchOptions {
+        self.inner.borrow().search_options
+    }
+
+    pub fn search_input(&self) -> Option<Rc<String>> {
+        self.inner.borrow().search_input.clone()
+    }
+
+    pub fn search_results(&self) -> Option<Rc<Vec<File>>> {
+        self.inner.borrow().search_results.clone()
+    }
+
+    pub fn selected_files(&self) -> Rc<RefCell<HashSet<File>>> {
+        self.inner.borrow().selected_files.clone()
+    }
+
+    pub fn directory(&self) -> Option<Rc<PathBuf>> {
+        self.inner.borrow().opened_dir.clone()
+    }
+}
+
+impl PartialEq for ApplicationData {
+    fn eq(&self, other: &Self) -> bool {
+        Rc::ptr_eq(&self.inner, &other.inner)
+    }
 }
 
 impl Sizes {
@@ -364,9 +446,7 @@ impl Theme {
 
 #[derive(Clone, Copy, PartialEq)]
 pub struct Settings {
-    pub(crate) view: AppView,
     pub(crate) filter: Filter,
-    /// How many times to refresh in 1 minute max = 255
     pub(crate) refresh_rate: u8,
 }
 
@@ -379,7 +459,6 @@ impl Default for Settings {
 #[allow(dead_code)]
 impl Settings {
     pub const DEFAULT: Settings = Settings {
-        view: AppView::Explorer,
         refresh_rate: 60,
         filter: Filter::DEFAULT,
     };
@@ -392,15 +471,11 @@ impl Settings {
     pub fn settings_or_default() -> Self {
         Self::DEFAULT
     }
-
-    pub fn view(self) -> AppView {
-        self.view
-    }
 }
 
 #[allow(unused)]
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub enum AppView {
+pub enum AppMenu {
     Explorer,
     Home,
     Settings,

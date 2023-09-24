@@ -1,5 +1,6 @@
 use crate::app::{
     new_dir::NewDirPopUp, new_file::NewFilePopUp, rename::RenamePopUp, ApplicationContext,
+    ApplicationData,
 };
 use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
@@ -13,6 +14,7 @@ pub fn RenameButton(prop: &TopButtonProps) -> Html {
         sizes,
         settings: _,
     } = use_context().unwrap();
+    let cdata = use_context::<ApplicationData>().unwrap();
     let item_to_rename = use_state(|| None);
 
     let finished = Callback::from({
@@ -27,12 +29,11 @@ pub fn RenameButton(prop: &TopButtonProps) -> Html {
 
     let onclick = {
         let item_to_rename = item_to_rename.clone();
+        let cdata = cdata.clone();
         move |_| {
             if let None = &*item_to_rename {
-                if let Some(items) = crate::app::data::all() {
-                    if let Some(file) = items.borrow().iter().next() {
-                        item_to_rename.set(Some(file.clone()))
-                    }
+                if let Some(file) = cdata.selected_files().borrow().iter().next() {
+                    item_to_rename.set(Some(file.clone()))
                 }
             }
         }
@@ -108,6 +109,7 @@ pub fn NewFolderButton(prop: &TopButtonProps) -> Html {
         sizes,
         settings: _,
     } = use_context().unwrap();
+    let cdata = use_context::<ApplicationData>().unwrap();
     let create_dir_in = use_state(|| None);
 
     let finished = Callback::from({
@@ -122,9 +124,10 @@ pub fn NewFolderButton(prop: &TopButtonProps) -> Html {
 
     let onclick = {
         let create_dir_in = create_dir_in.clone();
+        let cdata = cdata.clone();
         move |_| {
             if let None = &*create_dir_in {
-                if let Some(directory) = crate::app::data::directory() {
+                if let Some(directory) = cdata.directory() {
                     create_dir_in.set(Some(directory.clone()))
                 }
             }
@@ -200,6 +203,7 @@ pub fn NewFileButton(prop: &TopButtonProps) -> Html {
         sizes,
         settings: _,
     } = use_context().unwrap();
+    let cdata = use_context::<ApplicationData>().unwrap();
     let create_file_in = use_state(|| None);
 
     let finished = Callback::from({
@@ -214,9 +218,10 @@ pub fn NewFileButton(prop: &TopButtonProps) -> Html {
 
     let onclick = {
         let create_file_in = create_file_in.clone();
+        let cdata = cdata.clone();
         move |_| {
             if let None = &*create_file_in {
-                if let Some(directory) = crate::app::data::directory() {
+                if let Some(directory) = cdata.directory() {
                     create_file_in.set(Some(directory.clone()))
                 }
             }

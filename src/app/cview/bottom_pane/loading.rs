@@ -8,8 +8,8 @@ pub struct LoadingComponentProps {
 #[function_component]
 pub fn LoadingComponent(prop: &LoadingComponentProps) -> Html {
     let style = format! {"
-    width: 50px;
-    height: 10px;
+    width: 150px;
+    height: 30px;
     "};
 
     let glow_style = format! {"

@@ -1,4 +1,4 @@
-use crate::app::{AppView, ApplicationContext};
+use crate::app::{AppMenu, ApplicationContext, ApplicationData};
 use backend::File;
 use std::rc::Rc;
 use yew::prelude::*;
@@ -42,7 +42,7 @@ impl LocalFolderKind {
 #[derive(PartialEq, Properties)]
 pub struct LocalFolderProps {
     pub kind: LocalFolderKind,
-    pub updateview: Callback<AppView>,
+    pub updateview: Callback<AppMenu>,
 }
 
 #[function_component]
@@ -53,15 +53,18 @@ pub fn LocalCmp(prop: &LocalFolderProps) -> Html {
         sizes,
     } = use_context().unwrap();
 
+    let cdata = use_context::<ApplicationData>().unwrap();
+
     let size = sizes.home_local();
     let text_color = theme.foreground1();
 
     let onclick = {
         let updateview = prop.updateview.clone();
         let dir = Rc::new(prop.kind.file().path().clone());
+        let cdata = cdata.clone();
         move |_| {
-            crate::app::data::update_directory(Some(dir.clone()));
-            updateview.emit(AppView::Explorer)
+            cdata.update_directory(dir.clone());
+            updateview.emit(AppMenu::Explorer)
         }
     };
 

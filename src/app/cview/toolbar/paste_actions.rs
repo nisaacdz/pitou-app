@@ -1,7 +1,7 @@
 use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
 
-use crate::app::ApplicationContext;
+use crate::app::{ApplicationContext, ApplicationData};
 
 use super::{NameField, TopButtonProps};
 
@@ -11,24 +11,23 @@ pub struct PasteButtonProps {
 }
 
 #[function_component]
-pub fn PasteButton(prop: &PasteButtonProps) -> Html {
+pub fn PasteButton(_prop: &PasteButtonProps) -> Html {
     let ApplicationContext {
         theme: _,
         sizes,
         settings: _,
     } = use_context().unwrap();
-    let updateui = prop.updateui.clone();
+    let cdata = use_context::<ApplicationData>().unwrap();
 
-    let onclick = move |_| {
-        let updateui = updateui.clone();
-        crate::app::data::directory()
-            .map(|dir| {
+    let onclick = {
+        let cdata = cdata.clone();
+        move |_| {
+            if let Some(dir) = cdata.directory() {
                 spawn_local(async move {
                     crate::app::tasks::paste(&*dir).await;
-                    updateui.emit(());
                 });
-            })
-            .unwrap_or_default();
+            }
+        }
     };
 
     let tool_size = sizes.toolbar_item();
@@ -71,12 +70,15 @@ pub fn CopyButton(_prop: &TopButtonProps) -> Html {
         settings: _,
     } = use_context().unwrap();
 
-    let onclick = move |_| {
-        if let Some(items) = crate::app::data::all() {
-            let borrow = items.borrow();
-            if borrow.len() > 0 {
-                let arg = crate::app::tasks::to_js_items(borrow.iter());
+    let cdata = use_context::<ApplicationData>().unwrap();
 
+    let onclick = {
+        let cdata = cdata.clone();
+        move |_| {
+            let selected = cdata.selected_files();
+            let selected = selected.borrow();
+            if selected.len() > 0 {
+                let arg = crate::app::tasks::to_js_items(selected.iter());
                 spawn_local(async move {
                     crate::app::tasks::copy(arg).await;
                 });
@@ -123,13 +125,16 @@ pub fn CutButton(_prop: &TopButtonProps) -> Html {
         sizes,
         settings: _,
     } = use_context().unwrap();
+    let cdata = use_context::<ApplicationData>().unwrap();
 
-    let onclick = move |_| {
-        if let Some(items) = crate::app::data::all() {
-            let borrow = items.borrow();
-            if borrow.len() > 0 {
-                let arg = crate::app::tasks::to_js_items(borrow.iter());
+    let onclick = {
+        let cdata = cdata.clone();
 
+        move |_| {
+            let selected = cdata.selected_files();
+            let selected = selected.borrow();
+            if selected.len() > 0 {
+                let arg = crate::app::tasks::to_js_items(selected.iter());
                 spawn_local(async move {
                     crate::app::tasks::cut(arg).await;
                 });

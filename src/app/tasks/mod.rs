@@ -1,11 +1,11 @@
-use std::{cell::RefCell, collections::LinkedList, path::PathBuf};
-
 use super::invoke;
 use backend::{Drive, File, Filter, Locals, Path, SearchMsg, SearchOptions};
 use serde_wasm_bindgen::{from_value, to_value};
+use std::{cell::RefCell, collections::LinkedList, path::PathBuf};
 use wasm_bindgen::JsValue;
+use wasm_bindgen_futures::spawn_local;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize)]
 struct SearchArgs<'a> {
@@ -25,7 +25,7 @@ struct PathArg<'a> {
     path: &'a Path,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 struct NoArg;
 
 #[derive(Serialize)]
@@ -190,6 +190,7 @@ pub async fn retrieve(path: &PathBuf) -> Option<File> {
 
 pub async fn terminate_search_stream() {
     let arg = to_value(&NoArg).unwrap();
+    spawn_local(emit_ended_search());
     invoke("reset_search_stream", arg).await;
 }
 
@@ -200,6 +201,7 @@ pub async fn restart_stream_search(key: &String, path: &PathBuf, options: Search
         options,
     })
     .unwrap();
+    spawn_local(emit_began_search());
     invoke("restart_stream_search", arg).await;
 }
 
@@ -209,10 +211,40 @@ pub async fn read_search_stream() -> Option<SearchMsg> {
     from_value(res).unwrap()
 }
 
+pub async fn listen_to_began_search<F: FnOnce()>(callback: F) {
+    let _ = tauri_sys::event::once::<NoArg>("began_search")
+        .await
+        .unwrap();
+    callback()
+}
+
+pub async fn listen_to_ended_search<F: FnOnce()>(callback: F) {
+    let _ = tauri_sys::event::once::<NoArg>("ended_search")
+        .await
+        .unwrap();
+    callback()
+}
+
+async fn emit_began_search() {
+    tauri_sys::event::emit("began_search", &NoArg)
+        .await
+        .unwrap();
+}
+
+async fn emit_ended_search() {
+    tauri_sys::event::emit("ended_search", &NoArg)
+        .await
+        .unwrap();
+}
+
 pub use spawner::SpawnHandle;
 
 mod spawner {
-    use std::{future::Future, pin::Pin, task::{Poll, Context}};
+    use std::{
+        future::Future,
+        pin::Pin,
+        task::{Context, Poll},
+    };
     pub struct SpawnHandle<F> {
         future: Option<Pin<Box<F>>>,
     }
