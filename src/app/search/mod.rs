@@ -177,8 +177,13 @@ pub fn SearchView(prop: &SearchViewProps) -> Html {
                     let state = SearchState::Searching;
                     cdata.update_search_results(results.clone());
                     if let Some(path) = directory {
-                        crate::app::tasks::restart_stream_search(&*input, path.as_ref(), options)
-                            .await;
+                        crate::app::tasks::restart_stream_search(
+                            &*input,
+                            path.as_ref(),
+                            options,
+                            0,
+                        )
+                        .await;
                     }
                     search_results.set(SearchResult { results, state });
                 } else if search_results.is_searching() {
@@ -191,14 +196,12 @@ pub fn SearchView(prop: &SearchViewProps) -> Html {
                 }
             });
 
-            if let Some(mut oldhandle) = aborthandle.as_mut().replace(newhandle) {
-                oldhandle.cancel()
-            }
-
             spawn_local(async move {
-                if let Some(handle) = aborthandle.as_mut() {
-                    handle.await;
+                if let Some(oldhandle) = aborthandle.get_mut() {
+                    SpawnHandle::abort(oldhandle).await;
                 }
+
+                aborthandle.get_mut().insert(newhandle).await;
             });
         });
     }
@@ -274,7 +277,7 @@ async fn match_search_stream(
                     Some(res)
                 };
                 cdata.update_search_results(values.clone());
-                crate::app::tasks::terminate_search_stream().await;
+                crate::app::tasks::terminate_search_stream(0).await;
 
                 let state = SearchState::Idle;
                 search_results.set(SearchResult {

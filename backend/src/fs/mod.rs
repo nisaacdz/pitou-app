@@ -596,3 +596,51 @@ impl SearchOptions {
         self
     }
 }
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
+pub enum FileType {
+    Image(ImageFileType),
+    Video(VideoFileType),
+    Audio(AudioFileType),
+    Document(DocumentFileType),
+    Text(TextFileType),
+    Unknown,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
+pub enum VideoFileType {
+    MP4,
+    MKV,
+    WEBM,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
+pub enum AudioFileType {
+    MP3,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
+pub enum ImageFileType {
+    PNG,
+    JPG,
+    JPEG,
+    GIFF,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
+pub enum DocumentFileType {
+    PDF,
+    DOC,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
+pub enum TextFileType {
+    TXT,
+    JS,
+    PY,
+    RS,
+    JAVA,
+    CPP,
+    C,
+    GO,
+}

@@ -1,12 +1,15 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, rc::Rc, time::Duration};
 
-use yew::prelude::*;
+use wasm_bindgen_futures::spawn_local;
+use yew::{platform::time::sleep, prelude::*};
 
-use crate::app::{ApplicationContext, ApplicationData, SearchPage};
+use crate::app::{
+    data::SharedBorrow, tasks::SpawnHandle, ApplicationContext, ApplicationData, SearchPage,
+};
 
 use super::{
-    cview::*, AppMenu, BottomPane, HomeView, Pane, Settings, SettingsView, TabEntries, Theme,
-    ToolBar, Tab,
+    cview::*, AppMenu, BottomPane, HomeView, Pane, Settings, SettingsView, Tab, TabEntries, Theme,
+    ToolBar,
 };
 
 #[derive(PartialEq, Properties)]
@@ -21,8 +24,10 @@ pub fn ContentView(prop: &ContentViewProp) -> Html {
     let ApplicationContext {
         theme,
         sizes,
-        settings,
+        settings: _,
     } = use_context().unwrap();
+
+    let force_update = use_force_update();
 
     let updateui = { move |_| {} };
 
@@ -30,11 +35,11 @@ pub fn ContentView(prop: &ContentViewProp) -> Html {
     let updatesettings = prop.updatesettings.clone();
 
     let updateview = {
-        let updatesettings = prop.updatesettings.clone();
+        let force_update = force_update.clone();
         let data = prop.data.clone();
         move |newmenu| {
             data.update_app_menu(newmenu);
-            updatesettings.emit(settings)
+            force_update.force_update();
         }
     };
 
@@ -45,9 +50,6 @@ pub fn ContentView(prop: &ContentViewProp) -> Html {
     --row-hover-color: {background_color};
     --scrollbar-thumb: {background_color};
     background-color: {background_color};
-    margin: 0% 0% 0% 0%;
-    padding: 0% 0% 0% 0%;
-    position: relative;
     display: flex;
     flex-direction: column;
     {size}
@@ -64,7 +66,7 @@ pub fn ContentView(prop: &ContentViewProp) -> Html {
 
     let entries = match prop.data.active_menu() {
         AppMenu::Explorer => html! {
-            <div {style} >
+            <div {style} class = "app-body">
                 <ToolBar {updateui}/>
                 <div style = {middle_style}>
                     <LeftPane {updateview}/>
@@ -74,7 +76,7 @@ pub fn ContentView(prop: &ContentViewProp) -> Html {
             </div>
         },
         AppMenu::Home => html! {
-            <div {style} >
+            <div {style} class = "app-body">
                 <ToolBar {updateui}/>
                 <div style = {middle_style}>
                     <LeftPane updateview = {updateview.clone()}/>
@@ -84,7 +86,7 @@ pub fn ContentView(prop: &ContentViewProp) -> Html {
             </div>
         },
         AppMenu::Settings => html! {
-            <div {style} >
+            <div {style} class = "app-body">
                 <ToolBar {updateui}/>
                 <div style = {middle_style}>
                     <LeftPane {updateview}/>
@@ -94,7 +96,7 @@ pub fn ContentView(prop: &ContentViewProp) -> Html {
             </div>
         },
         AppMenu::Search => html! {
-            <div {style} >
+            <div {style} class = "app-body">
                 <ToolBar {updateui}/>
                 <div style = {middle_style}>
                     <LeftPane updateview = {updateview.clone()}/>
@@ -123,7 +125,11 @@ pub struct TitleBarProps {
 
 #[function_component]
 pub fn TitleBar(prop: &TitleBarProps) -> Html {
-    let ApplicationContext { theme, sizes: _, settings: _} = use_context().unwrap();
+    let ApplicationContext {
+        theme,
+        sizes: _,
+        settings: _,
+    } = use_context().unwrap();
 
     let background_color = theme.background2();
 
@@ -133,27 +139,50 @@ pub fn TitleBar(prop: &TitleBarProps) -> Html {
 
     let tab_entries = {
         let borrow = prop.tabs.borrow();
-        borrow.tabs.iter().enumerate().map(|(idx, tab)| {
-            let changetab = prop.changetab.clone();
-            let removetab = prop.removetab.clone();
-            let tab = tab.clone();
-            let isactive = tab == borrow.current_tab();
-            let open = move |()| changetab.emit(idx);
-            let close = move |()| removetab.emit(idx);
-            html! { <TitleBarTab {close} {open} {isactive} {tab}/> }
-        }).chain(Some(html! { <TitleBarTabAdder newtab = {prop.newtab.clone()} /> })).collect::<Html>()
+        borrow
+            .tabs
+            .iter()
+            .enumerate()
+            .map(|(idx, tab)| {
+                let changetab = prop.changetab.clone();
+                let removetab = prop.removetab.clone();
+                let tab = tab.clone();
+                let isactive = tab == borrow.current_tab();
+                let open = move |()| changetab.emit(idx);
+                let close = move |()| removetab.emit(idx);
+                html! { <TitleBarTab {close} {open} {isactive} {tab}/> }
+            })
+            .chain(Some(
+                html! { <TitleBarTabAdder newtab = {prop.newtab.clone()} /> },
+            ))
+            .collect::<Html>()
     };
-    
+
+    let onclose = { move |_| spawn_local(crate::app::tasks::close_window()) };
+
+    let onmini = { move |_| spawn_local(crate::app::tasks::minimize_window()) };
+
+    let onresize = { move |_| spawn_local(crate::app::tasks::toggle_maximize()) };
+
+    // TODO
+    // Investigate how to add `data-tauri-drag-region` to the titlebar
+
     html! {
-        <div class = "title-bar" {style}>
+        <div class = "title-bar" {style} data-tauri-drag-region = "true">
             <div class = "logo"></div>
             <div class = "tabs">
                 { tab_entries }
             </div>
             <div class = "ctrl">
-                <button class = "ctrl-button mini"></button>
-                <button class = "ctrl-button maxi"></button>
-                <button class = "ctrl-button close"></button>
+                <div class = "ctrl-button mini" onclick = {onmini}>
+                    <img class = "ctrl-button-img card" src="./public/icons/title/mini.png"/>
+                </div>
+                <div class = "ctrl-button resize" onclick = {onresize}>
+                    <img class = "ctrl-button-img card" src="./public/icons/title/resize.png"/>
+                </div>
+                <div class = "ctrl-button close" onclick = {onclose}>
+                    <img class = "ctrl-button-img card" src="./public/icons/title/close.png"/>
+                </div>
             </div>
         </div>
     }
@@ -173,8 +202,7 @@ fn TitleBarTabAdder(prop: &TitleBarTabAdderProps) -> Html {
 
     html! {
         <div class = "title-bar-add-tab">
-            <button class = "title-bar-add-tab-btn" {onclick}>
-            </button>
+            <img class = "title-bar-add-tab-btn card" {onclick} src="./public/icons/title/add_tab.svg"/>
         </div>
     }
 }
@@ -189,21 +217,54 @@ struct TitleBarTabProps {
 
 #[function_component]
 fn TitleBarTab(prop: &TitleBarTabProps) -> Html {
-    let ApplicationContext { theme, settings: _, sizes: _} = use_context().unwrap();
+    let ApplicationContext {
+        theme,
+        settings: _,
+        sizes: _,
+    } = use_context().unwrap();
+    let aborthandle = use_state(|| SharedBorrow::new(None));
+    let force_update = use_force_update();
 
-    let dir = prop.tab.data.directory();
+    {
+        let isactive = prop.isactive;
+        use_effect(move || {
+            if isactive {
+                let newhandle = SpawnHandle::new(async move {
+                    sleep(Duration::from_millis(250)).await;
+                    force_update.force_update();
+                });
+                spawn_local(async move {
+                    if let Some(oldhandle) = aborthandle.get_mut() {
+                        SpawnHandle::abort(oldhandle).await;
+                    }
 
-    let name = dir.as_ref().map(|dir| backend::File::name_of(&**dir)).unwrap_or_default();
-    
-    let border = if !prop.isactive { format! {"border: 1px solid {};", theme.spare()} } else { "".into() };
-    let background_color = if prop.isactive { theme.background1() } else { theme.background2() };
+                    aborthandle.get_mut().insert(newhandle).await;
+                });
+            }
+        });
+    }
+
+    let value = prop.tab.display();
+
+    let background_color = if prop.isactive {
+        theme.background1()
+    } else {
+        theme.background2()
+    };
+    let foreground_color = theme.foreground1();
+    let border_color = theme.spare();
+
+    let class = if prop.isactive {
+        "tab-item active"
+    } else {
+        "tab-item inactive"
+    };
 
     let style = format! {"
-    {border}
     background-color: {background_color};
+    border-color: {border_color};
+    color: {foreground_color};
     "};
-
-    let class = if prop.isactive { "tab-item active" } else { "tab-item" };
 
     let onclick = {
         let open = prop.open.clone();
@@ -213,15 +274,15 @@ fn TitleBarTab(prop: &TitleBarTabProps) -> Html {
     let onclose = {
         let close = prop.close.clone();
         move |e: MouseEvent| {
-            e.stop_propagation();    
+            e.stop_propagation();
             close.emit(())
         }
     };
 
     html! {
         <div {class} {onclick} {style}>
-            <span>{ name }</span>
-            <button class = "title-bar-tab-close" onclick = {onclose}></button>
+            { value }
+            <img class = "title-bar-tab-close card" onclick = {onclose} src="./public/icons/title/close.png"/>
         </div>
     }
 }

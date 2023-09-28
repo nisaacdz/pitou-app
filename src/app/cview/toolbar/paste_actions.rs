@@ -76,13 +76,9 @@ pub fn CopyButton(_prop: &TopButtonProps) -> Html {
         let cdata = cdata.clone();
         move |_| {
             let selected = cdata.selected_files();
-            let selected = selected.borrow();
-            if selected.len() > 0 {
-                let arg = crate::app::tasks::to_js_items(selected.iter());
-                spawn_local(async move {
-                    crate::app::tasks::copy(arg).await;
-                });
-            }
+            spawn_local(async move {
+                crate::app::tasks::copy(selected).await;
+            });
         }
     };
 
@@ -132,13 +128,9 @@ pub fn CutButton(_prop: &TopButtonProps) -> Html {
 
         move |_| {
             let selected = cdata.selected_files();
-            let selected = selected.borrow();
-            if selected.len() > 0 {
-                let arg = crate::app::tasks::to_js_items(selected.iter());
-                spawn_local(async move {
-                    crate::app::tasks::cut(arg).await;
-                });
-            }
+            spawn_local(async move {
+                crate::app::tasks::cut(selected).await;
+            });
         }
     };
 

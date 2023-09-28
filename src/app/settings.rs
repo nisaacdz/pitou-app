@@ -91,7 +91,6 @@ pub struct ApplicationData {
     inner: Rc<RefCell<Data>>,
 }
 
-
 impl ApplicationData {
     pub fn new() -> Self {
         let inner = Data {

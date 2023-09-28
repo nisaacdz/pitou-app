@@ -1,10 +1,12 @@
 use yew::prelude::*;
 
 use crate::app::ApplicationContext;
-mod loading;
-mod search;
-pub use loading::*;
-use search::SearchComponent;
+
+mod preloaders;
+mod statics;
+
+use preloaders::*;
+use statics::*;
 
 #[function_component]
 pub fn BottomPane() -> Html {
@@ -15,12 +17,14 @@ pub fn BottomPane() -> Html {
     } = use_context().unwrap();
 
     let background_color = theme.background1();
+    let preloader_foreground = theme.foreground1();
     let size = sizes.bottombar();
 
     let style = format! {"
     {size}
     background-color: {background_color};
     box-sizing: border-box;
+    --preloader-foreground: {preloader_foreground};
     "};
 
     let inner_style = format! {"
@@ -35,7 +39,15 @@ pub fn BottomPane() -> Html {
     html! {
         <div {style}>
             <div style = {inner_style}>
-                <SearchComponent />
+                <FolderInfo />
+                <SearchPreloader />
+                <DeletePreloader />
+                <CutPreloader />
+                <CopyPreloader />
+                <RenamePreloader />
+                <AddFolderPreloader />
+                <AddFilePreloader />
+                <PastePreloader />
             </div>
         </div>
     }

@@ -1,7 +1,7 @@
 use yew::prelude::*;
 
 use crate::{
-    app::{ApplicationData, ApplicationContext, AppMenu},
+    app::{AppMenu, ApplicationContext, ApplicationData},
     background_color,
 };
 

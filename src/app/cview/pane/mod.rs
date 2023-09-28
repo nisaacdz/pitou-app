@@ -54,14 +54,12 @@ pub fn Pane() -> Html {
                 }
             });
 
-            if let Some(mut oldhandle) = aborthandle.as_mut().replace(newhandle) {
-                oldhandle.cancel()
-            }
-
             spawn_local(async move {
-                if let Some(future) = aborthandle.as_mut() {
-                    future.await;
+                if let Some(oldhandle) = aborthandle.get_mut() {
+                    SpawnHandle::abort(oldhandle).await;
                 }
+
+                aborthandle.get_mut().insert(newhandle).await;
             });
         })
     }

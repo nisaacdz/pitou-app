@@ -1,9 +1,38 @@
 use super::invoke;
 use backend::{Drive, File, Filter, Locals, Path, SearchMsg, SearchOptions};
 use serde_wasm_bindgen::{from_value, to_value};
-use std::{cell::RefCell, collections::LinkedList, path::PathBuf};
+use std::{
+    cell::RefCell,
+    collections::{HashSet, LinkedList},
+    path::PathBuf,
+    rc::Rc,
+};
 use wasm_bindgen::JsValue;
 use wasm_bindgen_futures::spawn_local;
+
+macro_rules! register_event {
+    ($eventname:ident, $typename:ty) => {
+        paste::paste! {
+            pub async fn [<emit_began_ $eventname>](payload: EventPayload<$typename>) {
+                tauri_sys::event::emit(&stringify!($eventname), &payload).await.unwrap();
+            }
+
+            pub async fn [<emit_ended_ $eventname>](payload: EventPayload<NoArg>) {
+                tauri_sys::event::emit(&stringify!($eventname), &payload).await.unwrap();
+            }
+
+            pub async fn [<listen_to_began_ $eventname>]<F: FnOnce(&EventPayload<$typename>)>(callback: F) {
+                let event = tauri_sys::event::once::<EventPayload<$typename>>(&stringify!($eventname)).await.unwrap();
+                callback(&event.payload)
+            }
+
+            pub async fn [<listen_to_ended_ $eventname>]<F: FnOnce(&EventPayload<NoArg>)>(callback: F) {
+                let event = tauri_sys::event::once::<EventPayload<NoArg>>(&stringify!($eventname)).await.unwrap();
+                callback(&event.payload)
+            }
+        }
+    };
+}
 
 use serde::{Deserialize, Serialize};
 
@@ -25,13 +54,25 @@ struct PathArg<'a> {
     path: &'a Path,
 }
 
-#[derive(Serialize, Deserialize)]
-struct NoArg;
+#[derive(Clone, Copy, Serialize, Deserialize)]
+pub struct NoArg;
 
 #[derive(Serialize)]
 struct PathNameArgs<'a> {
     path: &'a Path,
     name: &'a str,
+}
+
+#[derive(Copy, Clone, Serialize, Deserialize)]
+pub struct EventPayload<T> {
+    pub arg: T,
+    pub id: i32,
+}
+
+impl<T> EventPayload<T> {
+    pub fn new(arg: T, id: i32) -> Self {
+        Self { arg, id }
+    }
 }
 
 #[derive(Serialize)]
@@ -65,49 +106,88 @@ mod items_serde {
     }
 }
 
-pub async fn cut(arg: JsValue) {
+pub async fn cut(items: Rc<RefCell<HashSet<File>>>) {
+    let items = items.borrow();
+    let len = items.len();
+    if len == 0 {
+        return;
+    }
+    let id = id_gen::generate();
+    let arg = to_js_items(items.iter());
+    std::mem::drop(items);
+    emit_began_cut(EventPayload::new(len, id)).await;
     invoke("cut", arg).await;
+    spawn_local(emit_ended_cut(EventPayload::new(NoArg, id)));
 }
 
-pub async fn copy(arg: JsValue) {
+pub async fn copy(items: Rc<RefCell<HashSet<File>>>) {
+    let items = items.borrow();
+    let len = items.len();
+    if len == 0 {
+        return;
+    }
+    let id = id_gen::generate();
+    let arg = to_js_items(items.iter());
+    std::mem::drop(items);
+    emit_began_copy(EventPayload::new(len, id)).await;
     invoke("copy", arg).await;
+    spawn_local(emit_ended_copy(EventPayload::new(NoArg, id)));
 }
 
-pub async fn delete(arg: JsValue) {
+pub async fn delete(items: &Vec<File>) {
+    if items.len() == 0 {
+        return;
+    }
+    let id = id_gen::generate();
+    let arg = to_js_items(items.iter());
+    emit_began_delete(EventPayload::new(items.len(), id)).await;
     invoke("delete", arg).await;
+    spawn_local(emit_ended_delete(EventPayload::new(NoArg, id)));
 }
 
 pub async fn paste(directory: &PathBuf) {
+    let id = id_gen::generate();
     let arg = to_value(&PathArg {
         path: directory.as_ref(),
     })
     .unwrap();
+    emit_began_paste(EventPayload::new(NoArg, id)).await;
     invoke("paste", arg).await;
+    spawn_local(emit_ended_paste(EventPayload::new(NoArg, id)));
 }
 
 pub async fn rename(path: &PathBuf, name: &str) {
+    let id = id_gen::generate();
     let arg = to_value(&PathNameArgs {
         path: path.as_ref(),
         name,
     })
     .unwrap();
+    emit_began_rename(EventPayload::new(NoArg, id)).await;
     invoke("rename", arg).await;
+    spawn_local(emit_ended_rename(EventPayload::new(NoArg, id)));
 }
 
 pub async fn createfile(path: &PathBuf) {
+    let id = id_gen::generate();
     let arg = to_value(&PathArg {
         path: path.as_ref(),
     })
     .unwrap();
+    emit_began_addfile(EventPayload::new(NoArg, id)).await;
     invoke("createfile", arg).await;
+    spawn_local(emit_ended_addfile(EventPayload::new(NoArg, id)));
 }
 
 pub async fn createdir(path: &PathBuf) {
+    let id = id_gen::generate();
     let arg = to_value(&PathArg {
         path: path.as_ref(),
     })
     .unwrap();
+    emit_began_addfolder(EventPayload::new(NoArg, id)).await;
     invoke("createdir", arg).await;
+    spawn_local(emit_ended_addfolder(EventPayload::new(NoArg, id)));
 }
 
 pub async fn default_directory() -> PathBuf {
@@ -160,7 +240,7 @@ pub async fn open(path: &PathBuf) {
 pub async fn locals() -> Locals {
     let arg = to_value(&NoArg).unwrap();
     let jsval = invoke("locals", arg).await;
-    from_value::<Locals>(jsval).unwrap()
+    from_value(jsval).unwrap()
 }
 
 pub async fn drives() -> Vec<Drive> {
@@ -188,20 +268,20 @@ pub async fn retrieve(path: &PathBuf) -> Option<File> {
     from_value(js_res).unwrap()
 }
 
-pub async fn terminate_search_stream() {
+pub async fn terminate_search_stream(id: i32) {
     let arg = to_value(&NoArg).unwrap();
-    spawn_local(emit_ended_search());
+    emit_ended_search(EventPayload::new(NoArg, id)).await;
     invoke("reset_search_stream", arg).await;
 }
 
-pub async fn restart_stream_search(key: &String, path: &PathBuf, options: SearchOptions) {
+pub async fn restart_stream_search(key: &String, path: &PathBuf, options: SearchOptions, id: i32) {
     let arg = to_value(&SearchArgs {
         key,
         path: path.as_ref(),
         options,
     })
     .unwrap();
-    spawn_local(emit_began_search());
+    emit_began_search(EventPayload::new(NoArg, id)).await;
     invoke("restart_stream_search", arg).await;
 }
 
@@ -211,63 +291,125 @@ pub async fn read_search_stream() -> Option<SearchMsg> {
     from_value(res).unwrap()
 }
 
-pub async fn listen_to_began_search<F: FnOnce()>(callback: F) {
-    let _ = tauri_sys::event::once::<NoArg>("began_search")
-        .await
-        .unwrap();
-    callback()
+pub async fn close_window() {
+    let wd = tauri_sys::window::current_window();
+    wd.close().await.expect("failed to close window")
 }
 
-pub async fn listen_to_ended_search<F: FnOnce()>(callback: F) {
-    let _ = tauri_sys::event::once::<NoArg>("ended_search")
-        .await
-        .unwrap();
-    callback()
+pub async fn minimize_window() {
+    let wd = tauri_sys::window::current_window();
+    wd.minimize().await.expect("failed to minimize window")
 }
 
-async fn emit_began_search() {
-    tauri_sys::event::emit("began_search", &NoArg)
+pub async fn toggle_maximize() {
+    let wd = tauri_sys::window::current_window();
+    wd.toggle_maximize()
         .await
-        .unwrap();
-}
-
-async fn emit_ended_search() {
-    tauri_sys::event::emit("ended_search", &NoArg)
-        .await
-        .unwrap();
+        .expect("failed to toggle maximized")
 }
 
 pub use spawner::SpawnHandle;
+
+register_event!(delete, usize);
+register_event!(search, NoArg);
+register_event!(copy, usize);
+register_event!(cut, usize);
+register_event!(addfile, NoArg);
+register_event!(rename, NoArg);
+register_event!(paste, NoArg);
+register_event!(addfolder, NoArg);
 
 mod spawner {
     use std::{
         future::Future,
         pin::Pin,
-        task::{Context, Poll},
+        task::{Context, Poll, Waker},
     };
+
     pub struct SpawnHandle<F> {
         future: Option<Pin<Box<F>>>,
+        wake_sp: Option<Waker>,
+        wake_ab: Option<Waker>,
+    }
+
+    struct AbortHandle<'a, F> {
+        handle: Option<&'a mut SpawnHandle<F>>,
+    }
+
+    impl<'a, F: Future<Output = ()>> Future for AbortHandle<'a, F> {
+        type Output = ();
+        fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+            match self.handle.take() {
+                None => Poll::Ready(()),
+                Some(v) => {
+                    if v.is_completed() {
+                        return Poll::Ready(());
+                    }
+                    let _future = v.future.take();
+                    v.wake_ab.replace(cx.waker().clone());
+                    // TODO replace below to return Poll::Ready when wake_sp is not ready
+                    v.wake_sp
+                        .as_ref()
+                        .expect("waking a future that has not been polled even once")
+                        .wake_by_ref();
+                    Poll::Pending
+                }
+            }
+        }
     }
 
     impl<F> SpawnHandle<F> {
-        pub fn cancel(&mut self) {
-            self.future.take();
-        }
-
         pub fn new(value: F) -> Self {
             let future = Some(Box::pin(value));
-            Self { future }
+            Self {
+                future,
+                wake_sp: None,
+                wake_ab: None,
+            }
+        }
+
+        pub fn is_completed(&self) -> bool {
+            self.future.is_none()
+        }
+    }
+
+    impl<F: Future<Output = ()>> SpawnHandle<F> {
+        pub async fn abort(&mut self) {
+            AbortHandle { handle: Some(self) }.await;
         }
     }
 
     impl<F: Future<Output = ()>> Future for SpawnHandle<F> {
         type Output = ();
         fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-            if let Some(pin) = self.future.as_mut() {
-                pin.as_mut().poll(cx)
+            if let Some(pin) = &mut self.future {
+                match pin.as_mut().poll(cx) {
+                    Poll::Pending => {
+                        self.wake_sp.replace(cx.waker().clone());
+                        Poll::Pending
+                    }
+                    Poll::Ready(_) => {
+                        self.future.take();
+                        Poll::Ready(())
+                    }
+                }
             } else {
+                if let Some(ab) = &self.wake_ab {
+                    ab.wake_by_ref();
+                }
                 Poll::Ready(())
             }
+        }
+    }
+}
+
+mod id_gen {
+    static mut ID: i32 = 0;
+
+    pub fn generate() -> i32 {
+        unsafe {
+            ID = ID.wrapping_add(1);
+            ID
         }
     }
 }

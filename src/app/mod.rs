@@ -1,5 +1,6 @@
-use std::{cell::RefCell, rc::Rc, path::PathBuf};
+use std::{cell::RefCell, rc::Rc};
 
+use backend::File;
 use wasm_bindgen::prelude::*;
 use yew::prelude::*;
 
@@ -10,7 +11,6 @@ extern "C" {
 
     #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "tauri"])]
     async fn invoke(cmd: &str, args: JsValue) -> JsValue;
-
 }
 
 mod components;
@@ -41,7 +41,7 @@ pub fn App() -> Html {
 
             let screen = window.screen().unwrap();
 
-            let screen_height = screen.avail_height().unwrap() - 23;
+            let screen_height = screen.avail_height().unwrap() - 30;
             let screen_width = screen.avail_width().unwrap();
 
             Sizes {
@@ -144,6 +144,71 @@ impl Tab {
 
     pub fn application_data(&self) -> ApplicationData {
         self.data.clone()
+    }
+
+    pub fn display(&self) -> Html {
+        let dir_name = if let Some(d) = self.data.directory() {
+            File::name_of(&*d).to_owned()
+        } else {
+            "".to_owned()
+        };
+
+        let cnt = match self.data.active_menu() {
+            AppMenu::Explorer => html! {
+            <>
+                <img class = "title-bar-tab-icon" src="./public/icons/side/explorer.png"/>
+                <span class = "title-bar-tab-name"> { dir_name } </span>
+            </>
+            },
+            AppMenu::Home => html! {
+            <>
+                <img class = "title-bar-tab-icon" src="./public/icons/side/home.png"/>
+                <span class = "title-bar-tab-name"> { dir_name } </span>
+            </>
+            },
+            AppMenu::Settings => html! {
+            <>
+                <img class = "title-bar-tab-icon" src="./public/icons/side/settings.png"/>
+                <span class = "title-bar-tab-name"> { "settings" } </span>
+            </>
+            },
+            AppMenu::Search => html! {
+            <>
+                <img class = "title-bar-tab-icon" src="./public/icons/top/search.png"/>
+                <span class = "title-bar-tab-name"> { "search results" } </span>
+            </>
+            },
+            AppMenu::History => html! {
+            <>
+                <img class = "title-bar-tab-icon" src="./public/icons/side/history.png"/>
+                <span class = "title-bar-tab-name"> { "history" } </span>
+            </>
+            },
+            AppMenu::Bookmarks => html! {
+            <>
+                <img class = "title-bar-tab-icon" src="./public/icons/side/bookmark.png"/>
+                <span class = "title-bar-tab-name"> { "bookmarks" } </span>
+            </>
+            },
+            AppMenu::Locked => html! {
+            <>
+                <img class = "title-bar-tab-icon" src="./public/icons/side/locked.png"/>
+                <span class = "title-bar-tab-name"> { "locked files" } </span>
+            </>
+            },
+            AppMenu::Cloud => html! {
+            <>
+                <img class = "title-bar-tab-icon" src="./public/icons/side/cloud_dir.png"/>
+                <span class = "title-bar-tab-name"> { "cloud" } </span>
+            </>
+            },
+        };
+
+        html! {
+            <div class = "title-bar-tab-content">
+                { cnt }
+            </div>
+        }
     }
 }
 

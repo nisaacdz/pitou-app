@@ -62,7 +62,8 @@ pub fn LocalCmp(prop: &LocalFolderProps) -> Html {
         let updateview = prop.updateview.clone();
         let dir = Rc::new(prop.kind.file().path().clone());
         let cdata = cdata.clone();
-        move |_| {
+        move |e: MouseEvent| {
+            e.stop_propagation();
             cdata.update_directory(dir.clone());
             updateview.emit(AppMenu::Explorer)
         }

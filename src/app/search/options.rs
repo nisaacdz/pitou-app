@@ -31,6 +31,7 @@ pub fn SearchOptionsCmp(prop: &SearchOptionsCmpProp) -> Html {
     let options = use_state_eq(|| cdata.search_options());
 
     let background_color = theme.background2();
+    let foreground_color = theme.foreground1();
     let border_color = theme.spare();
 
     let size = sizes.sidepane();
@@ -52,6 +53,7 @@ pub fn SearchOptionsCmp(prop: &SearchOptionsCmpProp) -> Html {
     align-items: center;
     gap: 10px;
     {size}
+    color: {foreground_color};
     background-color: {background_color};
     border: 1px solid {border_color};
     box-sizing: border-box;
@@ -169,7 +171,7 @@ pub fn SearchOptionsCmp(prop: &SearchOptionsCmpProp) -> Html {
     let placeholder = format! {"Enter search key"};
 
     html! {
-        <div class="search-options" style={style}>
+        <div class="search-options" {style}>
             <input style={input_style} class="search-input" type="text" {oninput} {placeholder} value = {(**input).clone()}/>
             <span class="title">{"Search Options"}</span>
             <form {onsubmit}>

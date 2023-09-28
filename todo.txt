@@ -3,15 +3,12 @@ Settings:
 - Theme
 - View - Grid, Row, Thumbs
 - Icon type - (Thumbs? Filetype, FolderNFile)
-- Default Directory or homepage directory
-- Explorer Main View filter
-- Explorer side view filter
+- Choose Default or homepage directory
 - package (premium?)
 - font
 
-
 Tasks
-- use tauri event system to propagate acitive events
+- use tauri event system to propagate active events
 - Searching,
 - Renaming participants,
 - Copying participants,
@@ -20,6 +17,3 @@ Tasks
 - show number of items on click on multiple items (x folders and y files)
 - onclick on single item, there should be a task to add to favorites and lock
 - onclick on multiple items, there should be a task to add all to favorites and lock all
-
-Immediate fix
-- Click on RowDescriptor of MainPane should toggle the selection (currently doesn't seem to work)

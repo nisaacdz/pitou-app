@@ -103,9 +103,16 @@ mod rand {
 mod mtx {
     use std::{cell::UnsafeCell, rc::Rc};
 
-    #[derive(Clone)]
     pub struct SharedBorrow<T> {
         ptr: Rc<UnsafeCell<T>>,
+    }
+
+    impl<T> Clone for SharedBorrow<T> {
+        fn clone(&self) -> Self {
+            Self {
+                ptr: self.ptr.clone(),
+            }
+        }
     }
 
     impl<T> SharedBorrow<T> {
@@ -114,7 +121,7 @@ mod mtx {
 
             Self { ptr }
         }
-        pub fn as_mut(&self) -> &mut T {
+        pub fn get_mut(&self) -> &mut T {
             unsafe { &mut *self.ptr.get() }
         }
     }

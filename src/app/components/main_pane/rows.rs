@@ -1,5 +1,5 @@
 use crate::{
-    app::{ApplicationContext, AppMenu, ApplicationData, DirIcon, FileIcon, SymLinkIcon},
+    app::{AppMenu, ApplicationContext, ApplicationData, DirIcon, FileIcon, SymLinkIcon},
     background_color,
 };
 
@@ -159,7 +159,7 @@ fn FileName(prop: &FileNameProps) -> Html {
     let ApplicationContext {
         theme,
         sizes,
-        settings,
+        settings: _,
     } = use_context().unwrap();
 
     let app_data = use_context::<ApplicationData>().unwrap();

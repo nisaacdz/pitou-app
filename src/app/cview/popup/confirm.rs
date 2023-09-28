@@ -1,16 +1,12 @@
-use std::{cell::RefCell, rc::Rc};
-use wasm_bindgen::JsValue;
-use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
 
 use crate::app::ApplicationContext;
 
 #[derive(PartialEq, Properties)]
 pub struct ConfirmDeleteProps {
-    pub deletedata: Rc<RefCell<Option<JsValue>>>,
+    pub delete: Callback<()>,
     pub prompt: String,
     pub cancel: Callback<()>,
-    pub updateui: Callback<()>,
 }
 
 #[function_component]
@@ -27,20 +23,10 @@ pub fn ConfirmDelete(prop: &ConfirmDeleteProps) -> Html {
     };
 
     let onsubmit = {
-        let deletedata = prop.deletedata.clone();
-        let cancel = prop.cancel.clone();
-        let updateui = prop.updateui.clone();
+        let delete = prop.delete.clone();
         move |e: SubmitEvent| {
             e.prevent_default();
-            if let Some(arg) = deletedata.borrow_mut().take() {
-                let updateui = updateui.clone();
-                spawn_local(async move {
-                    crate::app::tasks::delete(arg).await;
-                    updateui.emit(())
-                });
-            } else {
-                cancel.emit(())
-            }
+            delete.emit(());
         }
     };
 
