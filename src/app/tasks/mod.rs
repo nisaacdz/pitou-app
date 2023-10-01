@@ -10,28 +10,42 @@ use std::{
 use wasm_bindgen::JsValue;
 use wasm_bindgen_futures::spawn_local;
 
+macro_rules! clamp {
+    ($begin:ident, $end:ident) => {
+        paste::paste! {
+            stringify!([<$begin $end>])
+        }
+    }
+}
+
 macro_rules! register_event {
     ($eventname:ident, $typename:ty) => {
         paste::paste! {
-            pub async fn [<emit_began_ $eventname>](payload: EventPayload<$typename>) {
-                tauri_sys::event::emit(&stringify!($eventname), &payload).await.unwrap();
+            pub async fn [<emit_began_ $eventname>](payload: $typename) {
+                tauri_sys::event::emit(clamp!(began_, $eventname), &payload).await.unwrap();
             }
 
-            pub async fn [<emit_ended_ $eventname>](payload: EventPayload<NoArg>) {
-                tauri_sys::event::emit(&stringify!($eventname), &payload).await.unwrap();
+            pub async fn [<emit_ended_ $eventname>](payload: PayloadById) {
+                tauri_sys::event::emit(clamp!(ended_, $eventname), &payload).await.unwrap();
             }
 
-            pub async fn [<listen_to_began_ $eventname>]<F: FnOnce(&EventPayload<$typename>)>(callback: F) {
-                let event = tauri_sys::event::once::<EventPayload<$typename>>(&stringify!($eventname)).await.unwrap();
+            pub async fn [<listen_to_began_ $eventname>]<F: FnOnce(&$typename)>(callback: F) {
+                let event = tauri_sys::event::once::<$typename>(clamp!(began_, $eventname)).await.unwrap();
                 callback(&event.payload)
             }
 
-            pub async fn [<listen_to_ended_ $eventname>]<F: FnOnce(&EventPayload<NoArg>)>(callback: F) {
-                let event = tauri_sys::event::once::<EventPayload<NoArg>>(&stringify!($eventname)).await.unwrap();
+            pub async fn [<listen_to_ended_ $eventname>]<F: FnOnce(&PayloadById)>(callback: F) {
+                let event = tauri_sys::event::once::<PayloadById>(clamp!(ended_, $eventname)).await.unwrap();
                 callback(&event.payload)
             }
         }
     };
+}
+
+
+#[test]
+fn test_me() {
+    
 }
 
 use serde::{Deserialize, Serialize};
@@ -54,7 +68,7 @@ struct PathArg<'a> {
     path: &'a Path,
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct NoArg;
 
 #[derive(Serialize)]
@@ -63,15 +77,27 @@ struct PathNameArgs<'a> {
     name: &'a str,
 }
 
-#[derive(Copy, Clone, Serialize, Deserialize)]
-pub struct EventPayload<T> {
-    pub arg: T,
+#[derive(Serialize, Deserialize, PartialEq)]
+pub struct Payload<T> {
+    pub value: T,
     pub id: i32,
 }
 
-impl<T> EventPayload<T> {
-    pub fn new(arg: T, id: i32) -> Self {
-        Self { arg, id }
+#[derive(Serialize, Deserialize, PartialEq)]
+pub struct PayloadById {
+    pub id: i32,
+}
+
+impl PayloadById {
+    pub fn new(id: i32) -> Self {
+        Self { id }
+    }
+}
+
+
+impl<T> Payload<T> {
+    pub fn new(value: T, id: i32) -> Self {
+        Self { value, id }
     }
 }
 
@@ -115,9 +141,9 @@ pub async fn cut(items: Rc<RefCell<HashSet<File>>>) {
     let id = id_gen::generate();
     let arg = to_js_items(items.iter());
     std::mem::drop(items);
-    emit_began_cut(EventPayload::new(len, id)).await;
+    emit_began_cut(Payload::new(len, id)).await;
     invoke("cut", arg).await;
-    spawn_local(emit_ended_cut(EventPayload::new(NoArg, id)));
+    spawn_local(emit_ended_cut(PayloadById::new(id)));
 }
 
 pub async fn copy(items: Rc<RefCell<HashSet<File>>>) {
@@ -129,9 +155,9 @@ pub async fn copy(items: Rc<RefCell<HashSet<File>>>) {
     let id = id_gen::generate();
     let arg = to_js_items(items.iter());
     std::mem::drop(items);
-    emit_began_copy(EventPayload::new(len, id)).await;
+    emit_began_copy(Payload::new(len, id)).await;
     invoke("copy", arg).await;
-    spawn_local(emit_ended_copy(EventPayload::new(NoArg, id)));
+    spawn_local(emit_ended_copy(PayloadById::new(id)));
 }
 
 pub async fn delete(items: &Vec<File>) {
@@ -140,9 +166,9 @@ pub async fn delete(items: &Vec<File>) {
     }
     let id = id_gen::generate();
     let arg = to_js_items(items.iter());
-    emit_began_delete(EventPayload::new(items.len(), id)).await;
+    emit_began_delete(Payload::new(items.len(), id)).await;
     invoke("delete", arg).await;
-    spawn_local(emit_ended_delete(EventPayload::new(NoArg, id)));
+    spawn_local(emit_ended_delete(PayloadById::new(id)));
 }
 
 pub async fn paste(directory: &PathBuf) {
@@ -151,9 +177,9 @@ pub async fn paste(directory: &PathBuf) {
         path: directory.as_ref(),
     })
     .unwrap();
-    emit_began_paste(EventPayload::new(NoArg, id)).await;
+    emit_began_paste(PayloadById::new(id)).await;
     invoke("paste", arg).await;
-    spawn_local(emit_ended_paste(EventPayload::new(NoArg, id)));
+    spawn_local(emit_ended_paste(PayloadById::new(id)));
 }
 
 pub async fn rename(path: &PathBuf, name: &str) {
@@ -163,9 +189,9 @@ pub async fn rename(path: &PathBuf, name: &str) {
         name,
     })
     .unwrap();
-    emit_began_rename(EventPayload::new(NoArg, id)).await;
+    emit_began_rename(PayloadById::new(id)).await;
     invoke("rename", arg).await;
-    spawn_local(emit_ended_rename(EventPayload::new(NoArg, id)));
+    spawn_local(emit_ended_rename(PayloadById::new(id)));
 }
 
 pub async fn createfile(path: &PathBuf) {
@@ -174,9 +200,9 @@ pub async fn createfile(path: &PathBuf) {
         path: path.as_ref(),
     })
     .unwrap();
-    emit_began_addfile(EventPayload::new(NoArg, id)).await;
+    emit_began_addfile(PayloadById::new(id)).await;
     invoke("createfile", arg).await;
-    spawn_local(emit_ended_addfile(EventPayload::new(NoArg, id)));
+    spawn_local(emit_ended_addfile(PayloadById::new(id)));
 }
 
 pub async fn createdir(path: &PathBuf) {
@@ -185,9 +211,9 @@ pub async fn createdir(path: &PathBuf) {
         path: path.as_ref(),
     })
     .unwrap();
-    emit_began_addfolder(EventPayload::new(NoArg, id)).await;
+    emit_began_addfolder(PayloadById::new(id)).await;
     invoke("createdir", arg).await;
-    spawn_local(emit_ended_addfolder(EventPayload::new(NoArg, id)));
+    spawn_local(emit_ended_addfolder(PayloadById::new(id)));
 }
 
 pub async fn default_directory() -> PathBuf {
@@ -270,7 +296,7 @@ pub async fn retrieve(path: &PathBuf) -> Option<File> {
 
 pub async fn terminate_search_stream(id: i32) {
     let arg = to_value(&NoArg).unwrap();
-    emit_ended_search(EventPayload::new(NoArg, id)).await;
+    emit_ended_search(PayloadById::new(id)).await;
     invoke("reset_search_stream", arg).await;
 }
 
@@ -281,7 +307,7 @@ pub async fn restart_stream_search(key: &String, path: &PathBuf, options: Search
         options,
     })
     .unwrap();
-    emit_began_search(EventPayload::new(NoArg, id)).await;
+    emit_began_search(PayloadById::new(id)).await;
     invoke("restart_stream_search", arg).await;
 }
 
@@ -310,14 +336,19 @@ pub async fn toggle_maximize() {
 
 pub use spawner::SpawnHandle;
 
-register_event!(delete, usize);
-register_event!(search, NoArg);
-register_event!(copy, usize);
-register_event!(cut, usize);
-register_event!(addfile, NoArg);
-register_event!(rename, NoArg);
-register_event!(paste, NoArg);
-register_event!(addfolder, NoArg);
+pub use event_registry::*;
+
+mod event_registry {
+    use super::{Payload, PayloadById};
+    register_event!(delete, Payload<usize>);
+    register_event!(search, PayloadById);
+    register_event!(copy, Payload<usize>);
+    register_event!(cut, Payload<usize>);
+    register_event!(addfile, PayloadById);
+    register_event!(rename, PayloadById);
+    register_event!(paste, PayloadById);
+    register_event!(addfolder, PayloadById);
+}
 
 mod spawner {
     use std::{

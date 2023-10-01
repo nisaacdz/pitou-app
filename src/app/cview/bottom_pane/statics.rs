@@ -5,6 +5,7 @@ use yew::{platform::time::sleep, prelude::*};
 
 #[function_component]
 pub fn SelectedInfo() -> Html {
+    let _cdata = use_context::<ApplicationData>().unwrap();
     html! {}
 }
 

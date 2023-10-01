@@ -362,9 +362,15 @@ body {
 
 .preloader {
   width: auto;
-  height: 100%;
+  max-width: 250px;
+  height: 80%;
   display: flex;
   align-items: center;
+  border-right: 1px solid var(--preloader-border);
+  border-left: 1px solid var(--preloader-border);
+  gap: 5px;
+  padding-right: 5px;
+  padding-left: 5px;
 }
 
 .preloader-anim {
@@ -376,4 +382,9 @@ body {
   font-size: small;
   width: auto;
   color: var(--preloader-foreground);
+}
+
+.preloader-btn {
+  width: 15px;
+  height: 15px;
 }

@@ -9,7 +9,7 @@ use yew::prelude::*;
 
 #[function_component]
 pub fn SearchPreloader() -> Html {
-    let searching = use_state_eq(|| Rc::new(RefCell::new(HashSet::<i32>::new())));
+    let searching = use_state(|| Rc::new(RefCell::new(HashSet::<i32>::new())));
 
     let suscriber = use_state(|| SharedBorrow::new(None::<SpawnHandle<_>>));
     let unsuscriber = use_state(|| SharedBorrow::new(None::<SpawnHandle<_>>));
@@ -51,6 +51,14 @@ pub fn SearchPreloader() -> Html {
         })
     }
 
+    let onclose = {
+        move |_| {
+            spawn_local(async move {
+                crate::app::tasks::terminate_search_stream(0).await;
+            })
+        }
+    };
+
     let brv = searching.borrow();
 
     brv.iter()
@@ -59,6 +67,7 @@ pub fn SearchPreloader() -> Html {
                 <div class = "preloader search">
                     <img class = "preloader-anim" src="./public/anims/searching.gif"/>
                     <span class = "preloader-dsc">{"searching"}</span>
+                    <img class = "preloader-btn card" title = "terminate" onclick = {onclose} src="./public/icons/title/close.png"/>
                 </div>
             }
         })
@@ -67,7 +76,7 @@ pub fn SearchPreloader() -> Html {
 
 #[function_component]
 pub fn DeletePreloader() -> Html {
-    let deleting = use_state_eq(|| Rc::new(RefCell::new(HashMap::<i32, usize>::new())));
+    let deleting = use_state(|| Rc::new(RefCell::new(HashMap::<i32, usize>::new())));
     let suscriber = use_state(|| SharedBorrow::new(None::<SpawnHandle<_>>));
     let unsuscriber = use_state(|| SharedBorrow::new(None::<SpawnHandle<_>>));
 
@@ -78,7 +87,7 @@ pub fn DeletePreloader() -> Html {
             let deleting1 = deleting.clone();
             let newsuscriber = SpawnHandle::new(async move {
                 crate::app::tasks::listen_to_began_delete(move |v| {
-                    deleting1.borrow_mut().insert(v.id, v.arg);
+                    deleting1.borrow_mut().insert(v.id, v.value);
                     deleting1.set((*deleting1).clone())
                 })
                 .await;
@@ -129,7 +138,7 @@ pub fn DeletePreloader() -> Html {
 
 #[function_component]
 pub fn RenamePreloader() -> Html {
-    let renaming = use_state_eq(|| Rc::new(RefCell::new(HashSet::<i32>::new())));
+    let renaming = use_state(|| Rc::new(RefCell::new(HashSet::<i32>::new())));
 
     let suscriber = use_state(|| SharedBorrow::new(None::<SpawnHandle<_>>));
     let unsuscriber = use_state(|| SharedBorrow::new(None::<SpawnHandle<_>>));
@@ -187,7 +196,7 @@ pub fn RenamePreloader() -> Html {
 
 #[function_component]
 pub fn AddFolderPreloader() -> Html {
-    let adding_folder = use_state_eq(|| Rc::new(RefCell::new(HashSet::<i32>::new())));
+    let adding_folder = use_state(|| Rc::new(RefCell::new(HashSet::<i32>::new())));
 
     let suscriber = use_state(|| SharedBorrow::new(None::<SpawnHandle<_>>));
     let unsuscriber = use_state(|| SharedBorrow::new(None::<SpawnHandle<_>>));
@@ -245,7 +254,7 @@ pub fn AddFolderPreloader() -> Html {
 
 #[function_component]
 pub fn AddFilePreloader() -> Html {
-    let cutting = use_state_eq(|| Rc::new(RefCell::new(HashSet::<i32>::new())));
+    let cutting = use_state(|| Rc::new(RefCell::new(HashSet::<i32>::new())));
 
     let suscriber = use_state(|| SharedBorrow::new(None::<SpawnHandle<_>>));
     let unsuscriber = use_state(|| SharedBorrow::new(None::<SpawnHandle<_>>));
@@ -303,7 +312,7 @@ pub fn AddFilePreloader() -> Html {
 
 #[function_component]
 pub fn CutPreloader() -> Html {
-    let cutting = use_state_eq(|| Rc::new(RefCell::new(HashMap::<i32, usize>::new())));
+    let cutting = use_state(|| Rc::new(RefCell::new(HashMap::<i32, usize>::new())));
     let suscriber = use_state(|| SharedBorrow::new(None::<SpawnHandle<_>>));
     let unsuscriber = use_state(|| SharedBorrow::new(None::<SpawnHandle<_>>));
 
@@ -314,7 +323,7 @@ pub fn CutPreloader() -> Html {
             let cutting1 = cutting.clone();
             let newsuscriber = SpawnHandle::new(async move {
                 crate::app::tasks::listen_to_began_cut(move |v| {
-                    cutting1.borrow_mut().insert(v.id, v.arg);
+                    cutting1.borrow_mut().insert(v.id, v.value);
                     cutting1.set((*cutting1).clone())
                 })
                 .await;
@@ -365,7 +374,7 @@ pub fn CutPreloader() -> Html {
 
 #[function_component]
 pub fn CopyPreloader() -> Html {
-    let copying = use_state_eq(|| Rc::new(RefCell::new(HashMap::<i32, usize>::new())));
+    let copying = use_state(|| Rc::new(RefCell::new(HashMap::<i32, usize>::new())));
     let suscriber = use_state(|| SharedBorrow::new(None::<SpawnHandle<_>>));
     let unsuscriber = use_state(|| SharedBorrow::new(None::<SpawnHandle<_>>));
 
@@ -376,7 +385,7 @@ pub fn CopyPreloader() -> Html {
             let copying1 = copying.clone();
             let newsuscriber = SpawnHandle::new(async move {
                 crate::app::tasks::listen_to_began_copy(move |v| {
-                    copying1.borrow_mut().insert(v.id, v.arg);
+                    copying1.borrow_mut().insert(v.id, v.value);
                     copying1.set((*copying1).clone())
                 })
                 .await;
@@ -427,7 +436,7 @@ pub fn CopyPreloader() -> Html {
 
 #[function_component]
 pub fn PastePreloader() -> Html {
-    let pasting = use_state_eq(|| Rc::new(RefCell::new(HashSet::<i32>::new())));
+    let pasting = use_state(|| Rc::new(RefCell::new(HashSet::<i32>::new())));
 
     let suscriber = use_state(|| SharedBorrow::new(None::<SpawnHandle<_>>));
     let unsuscriber = use_state(|| SharedBorrow::new(None::<SpawnHandle<_>>));

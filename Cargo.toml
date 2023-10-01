@@ -16,5 +16,8 @@ tauri-sys = { git = "https://github.com/JonasKruckenberg/tauri-sys", features = 
 js-sys = "0.3.64"
 paste = "1.0.14"
 
+[dev.dependencies]
+wasm-bindgen-test = "0.3.37"
+
 [workspace]
 members = ["src-tauri", "backend"]
