@@ -41,10 +41,14 @@ pub fn Pane() -> Html {
                 if let Some(cur) = &*directory {
                     if entries.is_none() {
                         let newentries = Entries::init(&**cur, settings.filter).await;
+                        cdata.update_dir_siblings(newentries.siblings());
+                        cdata.update_dir_children(newentries.children());
                         entries.set(newentries);
                     } else {
                         sleep(settings.refresh_wait()).await;
                         let newentries = entries.refresh(&**cur, settings.filter).await;
+                        cdata.update_dir_siblings(newentries.siblings());
+                        cdata.update_dir_children(newentries.children());
                         entries.set(newentries)
                     }
                 } else {
@@ -140,13 +144,6 @@ impl Default for Entries {
 }
 
 impl Entries {
-    fn init_with(children: Vec<File>, siblings: Vec<File>) -> Self {
-        let children = Some(Rc::new(children));
-        let siblings = Some(Rc::new(siblings));
-
-        Self { children, siblings }
-    }
-
     fn is_none(&self) -> bool {
         matches!(&self.children, None)
     }
@@ -154,7 +151,11 @@ impl Entries {
     async fn init(directory: &PathBuf, filter: Filter) -> Self {
         let children = crate::app::tasks::children(directory, filter).await;
         let siblings = crate::app::tasks::siblings(directory, filter).await;
-        Entries::init_with(children, siblings)
+
+        let children = Some(Rc::new(children));
+        let siblings = Some(Rc::new(siblings));
+
+        Self { children, siblings }
     }
 
     fn children(&self) -> Option<Rc<Vec<File>>> {
@@ -168,7 +169,10 @@ impl Entries {
     async fn refresh(&self, dir: &PathBuf, filter: Filter) -> Self {
         let children = crate::app::tasks::children(dir, filter).await;
         let siblings = crate::app::tasks::siblings(dir, filter).await;
-        Entries::init_with(children, siblings)
+
+        let children = Some(Rc::new(children));
+        let siblings = Some(Rc::new(siblings));
+        Self { children, siblings }
     }
 
     fn new() -> Self {

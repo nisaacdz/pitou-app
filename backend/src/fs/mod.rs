@@ -115,6 +115,36 @@ impl<'d> Deserialize<'d> for Path {
     }
 }
 
+#[derive(Clone, Copy, Serialize, Deserialize)]
+pub struct FileSize {
+    bytes: u64,
+}
+
+impl FileSize {
+    const KB: f64 = (2u64 << 10) as f64;
+    const MB: f64 = (2u64 << 20) as f64;
+    const GB: f64 = (2u64 << 30) as f64;
+    const TB: f64 = (2u64 << 40) as f64;
+    pub fn format(self) -> String {
+        let bytes = self.bytes as f64;
+        if bytes < Self::KB {
+            format! {"{:.2} B", bytes}
+        } else if bytes < Self::MB {
+            format! {"{:.2} KB", bytes / Self::KB }
+        } else if bytes < Self::GB {
+            format! {"{:.2} MB", bytes / Self::MB }
+        } else if bytes < Self::TB {
+            format! {"{:.2} GB", bytes / Self::GB }
+        } else {
+            format! {"{:.2} TB", bytes / Self::TB }
+        }
+    }
+
+    pub fn new(value: u64) -> Self {
+        Self { bytes: value }
+    }
+}
+
 #[derive(Clone)]
 pub struct File {
     inner: Arc<Inner>,
@@ -263,6 +293,11 @@ pub struct DateTime {
 }
 
 impl DateTime {
+    pub fn format_slim(&self) -> String {
+        chrono::DateTime::<Local>::from(self.dt)
+            .format("%d/%m/%Y %H:%M")
+            .to_string()
+    }
     pub fn format(&self) -> String {
         use chrono::Datelike;
         let ellapsed = self.cur_dt.duration_since(self.dt).unwrap_or_default();

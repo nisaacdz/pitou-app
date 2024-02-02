@@ -83,6 +83,8 @@ struct Data {
     search_results: Option<Rc<Vec<File>>>,
     search_input: Option<Rc<String>>,
     search_options: SearchOptions,
+    dir_children: Option<Rc<Vec<File>>>,
+    dir_siblings: Option<Rc<Vec<File>>>,
 }
 
 #[derive(Clone)]
@@ -100,11 +102,30 @@ impl ApplicationData {
             search_results: Some(Rc::new(Vec::new())),
             search_input: None,
             search_options: SearchOptions::new(),
+            dir_children: None,
+            dir_siblings: None,
         };
 
         Self {
             inner: Rc::new(RefCell::new(inner)),
         }
+    }
+
+    pub fn update_dir_children(&self, newchildren: Option<Rc<Vec<File>>>) {
+        self.inner.borrow_mut().dir_children = newchildren;
+    }
+
+    pub fn update_dir_siblings(&self, newsiblings: Option<Rc<Vec<File>>>) {
+        self.inner.borrow_mut().dir_siblings = newsiblings;
+    }
+
+    pub fn dir_children(&self) -> Option<Rc<Vec<File>>> {
+        self.inner.borrow().dir_children.clone()
+    }
+
+    #[allow(unused)]
+    pub fn dir_siblings(&self) -> Option<Rc<Vec<File>>> {
+        self.inner.borrow().dir_siblings.clone()
     }
 
     pub fn update_search_results(&self, results: Option<Rc<Vec<File>>>) {
@@ -120,7 +141,11 @@ impl ApplicationData {
     }
 
     pub fn update_directory(&self, directory: Rc<PathBuf>) {
-        self.inner.borrow_mut().opened_dir = Some(directory);
+        let mut borrow = self.inner.borrow_mut();
+        borrow.opened_dir = Some(directory);
+        borrow.dir_children = None;
+        borrow.dir_siblings = None;
+        borrow.selected_files.borrow_mut().clear();
     }
 
     pub fn update_search_options(&self, options: SearchOptions) {

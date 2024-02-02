@@ -1,4 +1,4 @@
-use backend::{File, Filter, Path, Properties, SearchMsg, SearchOptions};
+use backend::{File, FileSize, Filter, Path, Properties, SearchMsg, SearchOptions};
 
 #[tauri::command]
 pub async fn properties(path: Path) -> Properties {
@@ -96,6 +96,11 @@ pub fn read_search_stream() -> Option<SearchMsg> {
 #[tauri::command]
 pub fn reset_search_stream() {
     backend::actions::reset_search_stream()
+}
+
+#[tauri::command]
+pub async fn folder_size(path: Path) -> Option<FileSize> {
+    backend::File::folder_size(path.as_ref()).await
 }
 
 #[tauri::command]

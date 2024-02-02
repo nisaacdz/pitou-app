@@ -1,5 +1,5 @@
 use super::invoke;
-use backend::{Drive, File, Filter, Locals, Path, SearchMsg, SearchOptions};
+use backend::{Drive, File, FileSize, Filter, Locals, Path, SearchMsg, SearchOptions};
 use serde_wasm_bindgen::{from_value, to_value};
 use std::{
     cell::RefCell,
@@ -15,7 +15,7 @@ macro_rules! clamp {
         paste::paste! {
             stringify!([<$begin $end>])
         }
-    }
+    };
 }
 
 macro_rules! register_event {
@@ -42,11 +42,8 @@ macro_rules! register_event {
     };
 }
 
-
 #[test]
-fn test_me() {
-    
-}
+fn test_me() {}
 
 use serde::{Deserialize, Serialize};
 
@@ -93,7 +90,6 @@ impl PayloadById {
         Self { id }
     }
 }
-
 
 impl<T> Payload<T> {
     pub fn new(value: T, id: i32) -> Self {
@@ -222,6 +218,18 @@ pub async fn default_directory() -> PathBuf {
     from_value::<Path>(res).unwrap().into_inner()
 }
 
+pub async fn folder_size(folder: &PathBuf) -> Option<FileSize> {
+    let id = id_gen::generate();
+    let arg = to_value(&PathArg {
+        path: folder.as_ref(),
+    })
+    .unwrap();
+    emit_began_computedirsize(PayloadById::new(id)).await;
+    let res = invoke("folder_size", arg).await;
+    spawn_local(emit_ended_computedirsize(PayloadById::new(id)));
+    from_value(res).unwrap()
+}
+
 pub async fn clipboard() -> LinkedList<Path> {
     let arg = to_value(&NoArg).unwrap();
     let res = invoke("clipboard", arg).await;
@@ -339,6 +347,7 @@ pub use spawner::SpawnHandle;
 pub use event_registry::*;
 
 mod event_registry {
+    #![allow(unused)]
     use super::{Payload, PayloadById};
     register_event!(delete, Payload<usize>);
     register_event!(search, PayloadById);
@@ -348,6 +357,7 @@ mod event_registry {
     register_event!(rename, PayloadById);
     register_event!(paste, PayloadById);
     register_event!(addfolder, PayloadById);
+    register_event!(computedirsize, PayloadById);
 }
 
 mod spawner {

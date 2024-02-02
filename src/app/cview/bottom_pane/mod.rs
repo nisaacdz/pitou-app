@@ -19,6 +19,7 @@ pub fn BottomPane() -> Html {
     let background_color = theme.background1();
     let preloader_foreground = theme.foreground1();
     let preloader_border = theme.spare();
+    let preloader_contrast = theme.background2();
     let size = sizes.bottombar();
 
     let style = format! {"
@@ -27,6 +28,7 @@ pub fn BottomPane() -> Html {
     box-sizing: border-box;
     --preloader-foreground: {preloader_foreground};
     --preloader-border: {preloader_border};
+    --preloader-contrast: {preloader_contrast};
     "};
 
     let inner_style = format! {"

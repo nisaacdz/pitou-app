@@ -33,6 +33,7 @@ fn main() {
             locals,
             read_link,
             retrieve,
+            folder_size,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

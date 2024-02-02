@@ -1,5 +1,5 @@
 use super::Drive;
-use crate::{DateTime, DriveKind, File, Filter, Inner, Locals, Metadata, Properties};
+use crate::{DateTime, DriveKind, File, FileSize, Filter, Inner, Locals, Metadata, Properties};
 use std::{
     io,
     path::{Path, PathBuf},
@@ -148,6 +148,10 @@ impl File {
             }
         }
         Ok(res)
+    }
+
+    pub async fn folder_size(path: &Path) -> Option<FileSize> {
+        directory_size(path).await.ok().map(|v| FileSize::new(v))
     }
 
     pub async fn children(dir: &Path, filter: Filter) -> io::Result<Vec<Self>> {
