@@ -39,4 +39,4 @@ cargo tauri build --release
 Apache 2.0
 
 ## Demo
-[![Demo Video](demo/thumbnail.png)](https://drive.google.com/file/d/19HRFB6KMP-koXJyH88dHmLY-QOr4MeJy/view?usp=drive_link)
+[![Demo Video](demo/thumbnail.png)](demo/demo.mp4)
